@@ -1,0 +1,259 @@
+# Production .gitignore for Amulet-AI# Amulet-AI Production .gitignore
+
+
+
+# Python# Python
+
+__pycache__/__pycache__/
+
+*.py[cod]*.py[cod]
+
+*$py.class*$py.class
+
+*.so*.so
+
+.Python.Python
+
+build/build/
+
+develop-eggs/develop-eggs/
+
+dist/dist/
+
+downloads/downloads/
+
+eggs/eggs/
+
+.eggs/.eggs/
+
+lib/lib/
+
+lib64/lib64/
+
+parts/parts/
+
+sdist/sdist/
+
+var/var/
+
+wheels/wheels/
+
+share/python-wheels/share/python-wheels/
+
+*.egg-info/*.egg-info/
+
+.installed.cfg.installed.cfg
+
+*.egg*.egg
+
+MANIFESTMANIFEST
+
+
+
+# PyInstaller# Virtual Environment
+
+*.manifestenv/
+
+*.specvenv/
+
+ENV/
+
+# Unit test / coverage reportsenv.bak/
+
+htmlcov/venv.bak/
+
+.tox/
+
+.nox/# IDEs
+
+.coverage.vscode/
+
+.coverage.*.idea/
+
+.cache*.swp
+
+nosetests.xml*.swo
+
+coverage.xml*~
+
+*.cover
+
+*.py,cover# OS
+
+.hypothesis/.DS_Store
+
+.pytest_cache/.DS_Store?
+
+cover/._*
+
+.Spotlight-V100
+
+# Virtual environments.Trashes
+
+.envehthumbs.db
+
+.venvThumbs.db
+
+env/
+
+venv/# Logs
+
+ENV/*.log
+
+env.bak/logs/
+
+venv.bak/*.log.*
+
+amulet_ai_env/
+
+# Environment variables
+
+# IDEs.env
+
+.vscode/.env.local
+
+.idea/.env.prod
+
+*.swp.env.staging
+
+*.swo
+
+*~# Model files (if not needed in repo)
+
+*.joblib
+
+# Jupyter Notebook*.pkl
+
+.ipynb_checkpoints*.pth
+
+*.pt
+
+# pyenv*.onnx
+
+.python-version
+
+# Temporary files
+
+# Logstmp/
+
+*.logtemp/
+
+logs/*.tmp
+
+*.out
+
+# Cache
+
+# OS.cache/
+
+.DS_Store*.cache
+
+.DS_Store?
+
+._*# Jupyter Notebooks
+
+.Spotlight-V100.ipynb_checkpoints
+
+.Trashes
+
+ehthumbs.db# pytest
+
+Thumbs.db.pytest_cache/
+
+.coverage
+
+# Model files (uncomment if models are stored elsewhere)
+
+# *.joblib# Database
+
+# *.pkl*.db
+
+# *.h5*.sqlite3
+
+# *.pth
+
+# Large dataset files (comment out if needed)
+
+# Large datasets (uncomment to exclude from git)# organized_dataset/splits/train/
+
+# dataset/splits/# organized_dataset/splits/val/
+
+# *.png# organized_dataset/augmented/
+
+# *.jpg
+
+# *.jpeg# Docker
+
+.docker/
+
+# Secrets & Config
+
+.env# Backup files
+
+.env.local*.backup
+
+.env.production*.bak
+
+config.json
+
+secrets.json# Runtime
+
+*.pid
+
+# Temporary files*.lock
+temp/
+tmp/
+*.tmp
+
+# Docker
+.dockerignore
+
+# Node modules (if any)
+node_modules/
+
+# Build artifacts
+build/
+dist/
+.gitattributes
+config/config_template.env
+core/__init__.py
+core/__pycache__/__init__.cpython-313.pyc
+core/__pycache__/config.cpython-313.pyc
+core/__pycache__/error_handling.cpython-313.pyc
+core/__pycache__/error_handling_enhanced.cpython-313.pyc
+core/__pycache__/memory_management.cpython-313.pyc
+core/__pycache__/performance.cpython-313.pyc
+core/__pycache__/performance_monitoring.cpython-313.pyc
+core/__pycache__/rate_limiter.cpython-313.pyc
+core/__pycache__/security.cpython-313.pyc
+core/__pycache__/thread_safety.cpython-313.pyc
+core/advanced_performance.py
+core/config.py
+core/error_handling.py
+core/error_handling_enhanced.py
+core/memory_management.py
+core/performance.py
+core/performance_monitoring.py
+core/rate_limiter.py
+core/security.py
+core/thread_safety.py
+dataset/DATASET_MANAGEMENT_RESULTS.md
+dataset/metadata/augmentation_report.json
+dataset/metadata/class_mapping.json
+dataset/metadata/cleaning_report.json
+dataset/metadata/comprehensive_dataset_report.json
+dataset/metadata/organization_log.json
+dataset/metadata/phase2_processing.json
+dataset/metadata/split_report.json
+dataset/metadata/summary.txt
+dataset/processed/phra_sivali/phra_sivali_back_001.png
+dataset/processed/phra_sivali/phra_sivali_back_003.png
+dataset/processed/phra_sivali/phra_sivali_back_005.png
+dataset/processed/phra_sivali/phra_sivali_back_006.png
+dataset/processed/phra_sivali/phra_sivali_back_007.png
+dataset/processed/phra_sivali/phra_sivali_back_008.png
+dataset/processed/phra_sivali/phra_sivali_back_009.png
+dataset/processed/phra_sivali/phra_sivali_back_010.png
+dataset/processed/phra_sivali/phra_sivali_back_011.png
+dataset/processed/phra_sivali/phra_sivali_back_012.png
+dataset/processed/phra_sivali/phra_sivali_front_002.png

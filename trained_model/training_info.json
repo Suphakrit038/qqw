@@ -1,0 +1,17 @@
+{
+  "model_type": "RandomForestClassifier",
+  "n_samples_train": 600,
+  "n_samples_test": 151,
+  "n_features_original": 118,
+  "n_features_pca": 77,
+  "explained_variance_ratio": 0.9516133123413801,
+  "class_names": [
+    "phra_sivali",
+    "portrait_back",
+    "prok_bodhi_9_leaves",
+    "somdej_pratanporn_buddhagavak",
+    "waek_man",
+    "wat_nong_e_duk"
+  ],
+  "training_completed": "2025-10-03T02:53:26.765837"
+}

@@ -1,0 +1,77 @@
+# Docker Compose for Development Environment
+version: '3.8'
+
+services:
+  # API Service
+  amulet-api:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV=development
+      - DEBUG=true
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - LOG_LEVEL=debug
+    volumes:
+      - ../ai_models:/app/ai_models
+      - ../trained_model:/app/trained_model
+      - ../core:/app/core
+      - ./logs:/app/logs
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - amulet-network
+
+  # Frontend Service  
+  amulet-frontend:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - ENV=development
+      - API_URL=http://amulet-api:8000
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+    depends_on:
+      - amulet-api
+    restart: unless-stopped
+    networks:
+      - amulet-network
+
+  # Redis for Caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - amulet-network
+
+  # Development Tools
+  portainer:
+    image: portainer/portainer-ce:latest
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    restart: unless-stopped
+    networks:
+      - amulet-network
+
+volumes:
+  redis_data:
+  portainer_data:
+
+networks:
+  amulet-network:
+    driver: bridge

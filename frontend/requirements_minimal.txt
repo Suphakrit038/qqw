@@ -1,0 +1,30 @@
+# Amulet AI Frontend - Minimal Requirements
+# สำหรับการรันในสภาพแวดล้อมที่จำกัด (เช่น Streamlit Cloud)
+
+# Core Web Framework
+streamlit>=1.28.0
+
+# Essential Data Processing  
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Image Processing (Essential)
+Pillow>=10.0.0
+
+# API Communication
+requests>=2.31.0
+
+# Date and Time
+python-dateutil>=2.8.2
+
+# Visualization
+plotly>=5.15.0
+
+# Optional: UI Components (if available)
+streamlit-option-menu>=0.3.6
+
+# Note: The following are optional and will use fallback if not available:
+# - opencv-python (for advanced image processing)
+# - scikit-learn (for AI models)
+# - joblib (for model loading)
+# - torch/torchvision (for PyTorch models)
