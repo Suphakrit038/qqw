@@ -147,11 +147,11 @@ class EnhancedAmuletAI:
         
         # Enhanced preprocessor
         preprocess_config = EnhancedPreprocessConfig(
-            img_size=(224, 224),
-            enhance_edges=True,
-            enhance_texture=True,
-            adaptive_contrast=True,
-            multi_scale=True
+            image_size=(224, 224),
+            use_edge_enhancement=True,
+            use_texture_enhancement=True,
+            use_adaptive_contrast=True,
+            use_multi_scale=True
         )
         self.preprocessor = EnhancedPreprocessor(preprocess_config)
         
