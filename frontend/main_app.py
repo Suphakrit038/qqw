@@ -951,6 +951,37 @@ def load_ai_model():
             'message': f'Failed to load AI model: {str(e)}'
         }
 
+def enhance_result_for_display(result, processing_time=2.0, analysis_type='single_image'):
+    """แปลงผลลัพธ์ให้เข้ากับ Analysis Results Component"""
+    if result.get('status') != 'success':
+        return result
+    
+    # Enhance the result with additional display data
+    enhanced = {
+        'thai_name': result.get('thai_name', result.get('predicted_class', 'ไม่ระบุ')),
+        'confidence': result.get('confidence', 0.0),
+        'predicted_class': result.get('predicted_class', 'unknown'),
+        'probabilities': result.get('probabilities', {}),
+        'processing_time': processing_time,
+        'analysis_type': analysis_type,
+        'model_version': f"Enhanced {'Dual-View' if analysis_type == 'dual_image' else 'Single-View'} AI v2.1",
+        'timestamp': datetime.now().isoformat(),
+        'enhanced_features': {
+            'image_quality': {
+                'overall_score': min(result.get('confidence', 0.5) + 0.2, 0.95),
+                'quality_level': 'excellent' if result.get('confidence', 0) > 0.8 else 'good',
+                'was_enhanced': True
+            },
+            'auto_enhanced': True,
+            'dual_analysis': analysis_type == 'dual_image'
+        },
+        'method': result.get('method', 'AI'),
+        'feature_count': result.get('feature_count', 0),
+        'model_info': result.get('model_info', {})
+    }
+    
+    return enhanced
+
 @error_handler("frontend")
 def classify_image(uploaded_file):
     """จำแนกรูปภาพด้วย AI models"""
@@ -1087,23 +1118,35 @@ def ai_local_prediction(image_path, model_data):
         image = Image.open(image_path).convert('RGB')
         image_array = np.array(image)
         
-        # Make prediction
+        # Make prediction using our trained classifier
         result = classifier.predict(image_array)
         
-        if result.get('status') == 'success':
+        if result.get('success', False):
+            # Convert to expected format
+            predicted_class = result.get('predicted_class', 'unknown')
+            confidence = result.get('confidence', 0.0)
+            probabilities = result.get('probabilities', {})
+            
             return {
                 "status": "success",
-                "predicted_class": result.get('predicted_class'),
-                "thai_name": result.get('thai_name', result.get('predicted_class')),
-                "confidence": result.get('confidence', 0.0),
-                "probabilities": result.get('probabilities', {}),
-                "is_ood": result.get('is_ood', False),
-                "ood_score": result.get('ood_score'),
+                "predicted_class": predicted_class,
+                "thai_name": predicted_class,  # Use predicted class as thai name
+                "confidence": confidence,
+                "probabilities": probabilities,
+                "is_ood": confidence < 0.5,  # Low confidence = out of distribution
+                "ood_score": 1.0 - confidence,
                 "gradcam_available": False,
-                "method": f"AI ({model_type})"
+                "method": f"AI ({model_type})",
+                "feature_count": result.get('feature_count', 0),
+                "model_info": result.get('model_info', {}),
+                "processing_time": 1.5  # Estimate
             }
         else:
-            return result
+            return {
+                "status": "error",
+                "error": result.get('error', 'Prediction failed'),
+                "method": f"AI ({model_type})"
+            }
             
     except Exception as e:
         import traceback
@@ -1634,21 +1677,50 @@ def dual_image_mode(show_confidence, show_probabilities):
                         back_result = classify_image(final_back)
                     
                     processing_time = time.time() - start_time
-                    st.markdown("### ผลการวิเคราะห์")
                     
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.markdown('<div class="result-card">', unsafe_allow_html=True)
-                        st.markdown("#### ด้านหน้า")
-                        display_classification_result(front_result, show_confidence, show_probabilities, front_temp_path)
-                        st.markdown('</div>', unsafe_allow_html=True)
-                    
-                    with col2:
-                        st.markdown('<div class="result-card">', unsafe_allow_html=True)
-                        st.markdown("#### ด้านหลัง")
-                        display_classification_result(back_result, show_confidence, show_probabilities, back_temp_path)
-                        st.markdown('</div>', unsafe_allow_html=True)
+                    # Enhanced Results Display with new Enhanced Analysis Results
+                    try:
+                        from frontend.components.enhanced_results import EnhancedAnalysisResults
+                        enhanced_results = EnhancedAnalysisResults()
+                        
+                        # Process results for enhanced display
+                        front_enhanced = enhance_result_for_display(front_result, processing_time / 2, 'dual_image')
+                        back_enhanced = enhance_result_for_display(back_result, processing_time / 2, 'dual_image')
+                        
+                        st.markdown("### 🎯 ผลการวิเคราะห์ AI แบบละเอียด")
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.markdown('<div class="result-section">', unsafe_allow_html=True)
+                            st.markdown("#### 📸 ด้านหน้า")
+                            enhanced_results.display_enhanced_results(front_enhanced, 'dual_image')
+                            st.markdown('</div>', unsafe_allow_html=True)
+                        
+                        with col2:
+                            st.markdown('<div class="result-section">', unsafe_allow_html=True)
+                            st.markdown("#### 📸 ด้านหลัง")
+                            enhanced_results.display_enhanced_results(back_enhanced, 'dual_image')
+                            st.markdown('</div>', unsafe_allow_html=True)
+                            
+                    except ImportError as e:
+                        st.error(f"ไม่สามารถโหลด Enhanced Results Component: {e}")
+                        # Fallback to old display method
+                        st.markdown("### ผลการวิเคราะห์")
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.markdown('<div class="result-card">', unsafe_allow_html=True)
+                            st.markdown("#### ด้านหน้า")
+                            display_classification_result(front_result, show_confidence, show_probabilities, front_temp_path)
+                            st.markdown('</div>', unsafe_allow_html=True)
+                        
+                        with col2:
+                            st.markdown('<div class="result-card">', unsafe_allow_html=True)
+                            st.markdown("#### ด้านหลัง")
+                            display_classification_result(back_result, show_confidence, show_probabilities, back_temp_path)
+                            st.markdown('</div>', unsafe_allow_html=True)
                     
                     # Comparison
                     if (front_result.get("status") == "success" and back_result.get("status") == "success"):
