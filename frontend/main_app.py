@@ -1016,6 +1016,7 @@ def local_prediction(image_path):
     """การทำนายแบบ local"""
     try:
         import joblib
+        import numpy as np
 
         if cv2 is None:
             return {
@@ -1023,16 +1024,20 @@ def local_prediction(image_path):
                 "error": "OpenCV not available for image processing"
             }
 
+        # Load trained models
         classifier = joblib.load(str(project_root / "trained_model/classifier.joblib"))
         scaler = joblib.load(str(project_root / "trained_model/scaler.joblib"))
         label_encoder = joblib.load(str(project_root / "trained_model/label_encoder.joblib"))
 
-        image = cv2.imread(image_path)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image_resized = cv2.resize(image, (224, 224))
-        image_normalized = image_resized.astype(np.float32) / 255.0
-        features = image_normalized.flatten()
+        # Extract features using the same method as training
+        features = extract_image_features(image_path)
+        if features is None:
+            return {
+                "status": "error",
+                "error": "Failed to extract features from image"
+            }
 
+        # Scale features and predict
         features_scaled = scaler.transform(features.reshape(1, -1))
         prediction = classifier.predict(features_scaled)[0]
         probabilities = classifier.predict_proba(features_scaled)[0]
