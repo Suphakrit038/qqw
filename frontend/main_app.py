@@ -1357,9 +1357,6 @@ def dual_image_mode(show_confidence, show_probabilities):
         # โหมดมือถือ - แสดงแนวตั้ง
         st.markdown("#### 📱 โหมดมือถือ")
         
-        # Camera interface
-        create_camera_interface()
-        
         st.markdown("---")
         
         # Front image section
@@ -1438,9 +1435,8 @@ def dual_image_mode(show_confidence, show_probabilities):
             if display_back:
                 st.image(display_back, caption="รูปด้านหลัง", use_container_width=True)
         
-        # Camera interface for desktop
+        # Additional upload options
         st.markdown("---")
-        create_camera_interface()
 
     st.markdown("---")
 
