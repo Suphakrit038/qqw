@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 🚀 Enhanced Integration Script
 รวมระบบ Enhanced Multi-Layer CNN เข้ากับโปรเจ็กต์หลัก

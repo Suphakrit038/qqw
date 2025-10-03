@@ -157,7 +157,7 @@ def test_training_system():
     print("=" * 60)
     
     try:
-        from train_ai_model import AmuletAITrainer
+        from trained_model.train_ai_model import AmuletAITrainer
         
         print("✅ Training System โหลดสำเร็จ")
         
