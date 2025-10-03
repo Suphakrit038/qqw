@@ -127,7 +127,7 @@ COLORS = {
 # Page Configuration
 st.set_page_config(
     page_title="Amulet-AI - ระบบจำแนกพระเครื่อง",
-    page_icon="",
+    page_icon="พ",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
