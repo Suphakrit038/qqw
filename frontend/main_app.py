@@ -13,11 +13,32 @@ import streamlit as st
 import requests
 import tempfile
 import joblib
+import sys
+from pathlib import Path
 try:
     import cv2
 except ImportError:
     cv2 = None
     st.warning("OpenCV (cv2) not installed. Some image processing features may not work.")
+
+# Add project root to path
+project_root = Path(__file__).parent.parent
+sys.path.append(str(project_root))
+
+# Import enhanced modules (with fallback)
+try:
+    from core.error_handling_enhanced import error_handler, validate_image_file
+    from core.performance_monitoring import performance_monitor
+except:
+    def error_handler(error_type="general"):
+        def decorator(func):
+            return func
+        return decorator
+
+    class performance_monitor:
+        @staticmethod
+        def log_performance(func_name, execution_time):
+            pass
 import numpy as np
 from PIL import Image
 import json
