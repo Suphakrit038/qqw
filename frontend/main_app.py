@@ -994,10 +994,8 @@ def extract_image_features(image_path):
     """Extract comprehensive features from image (same as training)"""
     try:
         import numpy as np
+        import cv2  # Import ใหม่เพื่อให้แน่ใจ
         
-        if not CV2_AVAILABLE:
-            return None
-            
         # Load image
         image = cv2.imread(image_path)
         if image is None:
@@ -1062,12 +1060,7 @@ def local_prediction(image_path):
     try:
         import joblib
         import numpy as np
-
-        if not CV2_AVAILABLE:
-            return {
-                "status": "error",
-                "error": "OpenCV not available for image processing"
-            }
+        import cv2  # Import ใหม่เพื่อให้แน่ใจ
 
         # Load trained models
         classifier = joblib.load(str(project_root / "trained_model/classifier.joblib"))
@@ -1112,10 +1105,20 @@ def local_prediction(image_path):
             }
         }
 
+    except ImportError as e:
+        return {
+            "status": "error",
+            "error": f"Import error: {str(e)}"
+        }
+    except FileNotFoundError as e:
+        return {
+            "status": "error", 
+            "error": f"Model file not found: {str(e)}"
+        }
     except Exception as e:
         return {
             "status": "error",
-            "error": str(e)
+            "error": f"Unexpected error: {str(e)}"
         }
 
 def display_classification_result(result, show_confidence=True, show_probabilities=True):
