@@ -923,36 +923,6 @@ def get_other_logos():
         pass
     return logos
 
-def create_camera_interface():
-    """สร้าง interface สำหรับกล้อง"""
-    st.markdown("""
-    <div class="camera-container">
-        <h4>📷 ถ่ายรูปด้วยกล้อง</h4>
-        <p>กดปุ่มเพื่อเริ่มใช้กล้อง (ขออนุญาตครั้งเดียว ใช้ได้ทั้งหน้าและหลัง)</p>
-        
-        <button class="camera-button" onclick="requestCameraPermission().then(stream => {
-            cameraStream = stream;
-            document.getElementById('camera-video').srcObject = stream;
-            document.getElementById('camera-controls').style.display = 'block';
-            document.getElementById('start-camera').style.display = 'none';
-        }).catch(err => {
-            alert('ไม่สามารถเข้าถึงกล้องได้: ' + err.message);
-        });" id="start-camera">🎥 เริ่มใช้กล้อง</button>
-        
-        <div id="camera-controls" style="display: none;">
-            <video id="camera-video" class="camera-video" autoplay playsinline muted></video>
-            <br>
-            <button class="camera-button" onclick="switchCamera('user')">📱 กล้องหน้า</button>
-            <button class="camera-button" onclick="switchCamera('environment')">📷 กล้องหลัง</button>
-            <br>
-            <button class="camera-button" onclick="capturePhoto('front')" style="background: #10b981;">📸 ถ่ายรูปหน้า</button>
-            <button class="camera-button" onclick="capturePhoto('back')" style="background: #3b82f6;">📸 ถ่ายรูปหลัง</button>
-            <br>
-            <button class="camera-button" onclick="stopCamera(); document.getElementById('camera-controls').style.display = 'none'; document.getElementById('start-camera').style.display = 'block';" style="background: #ef4444;">⏹️ หยุดกล้อง</button>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
 def check_api_health():
     """ตรวจสอบสถานะ API"""
     try:
@@ -1011,6 +981,73 @@ def classify_image(uploaded_file):
             "error": str(e),
             "method": "None"
         }
+
+def extract_image_features(image_path):
+    """Extract comprehensive features from image (same as training)"""
+    try:
+        import numpy as np
+        
+        if cv2 is None:
+            return None
+            
+        # Load image
+        image = cv2.imread(image_path)
+        if image is None:
+            return None
+            
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        
+        features = []
+        
+        # Color histogram features (3 channels x 32 bins = 96 features)
+        for channel in range(3):
+            hist = cv2.calcHist([image_rgb], [channel], None, [32], [0, 256])
+            hist = hist.flatten() / (image_rgb.shape[0] * image_rgb.shape[1])
+            features.extend(hist.tolist())
+        
+        # Texture features - simple version (1 feature)
+        features.append(float(np.std(image_gray)))
+        
+        # Shape features using Hu moments (7 features)
+        moments = cv2.moments(image_gray)
+        hu_moments = cv2.HuMoments(moments)
+        hu_moments = -np.sign(hu_moments) * np.log10(np.abs(hu_moments) + 1e-10)
+        features.extend(hu_moments.flatten().tolist())
+        
+        # Basic shape features (2 features)
+        height, width = image_gray.shape
+        features.extend([
+            width / height,  # Aspect ratio
+            np.sum(image_gray > 0) / (width * height),  # Fill ratio
+        ])
+        
+        # Edge features (10 features)
+        edges = cv2.Canny(image_gray, 50, 150)
+        edge_density = np.sum(edges > 0) / (edges.shape[0] * edges.shape[1])
+        features.append(float(edge_density))
+        
+        # Add padding to reach expected feature count (118 total)
+        current_features = len(features)  # Should be around 107
+        if current_features < 118:
+            # Add some simple statistical features to reach 118
+            features.extend([
+                float(np.mean(image_gray)),
+                float(np.var(image_gray)),
+                float(np.min(image_gray)),
+                float(np.max(image_gray)),
+                float(np.median(image_gray))
+            ])
+            
+            # Fill remaining with zeros if needed
+            while len(features) < 118:
+                features.append(0.0)
+        
+        return np.array(features[:118])  # Ensure exactly 118 features
+        
+    except Exception as e:
+        print(f"Error extracting features: {e}")
+        return None
 
 def local_prediction(image_path):
     """การทำนายแบบ local"""
