@@ -127,7 +127,7 @@ COLORS = {
 # Page Configuration
 st.set_page_config(
     page_title="Amulet-AI - ระบบจำแนกพระเครื่อง",
-    page_icon="พ",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -991,16 +991,16 @@ def create_camera_interface():
             document.getElementById('start-camera').style.display = 'none';
         }).catch(err => {
             alert('ไม่สามารถเข้าถึงกล้องได้: ' + err.message);
-        });" id="start-camera">🎥 เริ่มใช้กล้อง</button>
+        });" id="start-camera">เริ่มใช้กล้อง</button>
         
         <div id="camera-controls" style="display: none;">
             <video id="camera-video" class="camera-video" autoplay playsinline muted></video>
             <br>
-            <button class="camera-button" onclick="switchCamera('user')">📱 กล้องหน้า</button>
-            <button class="camera-button" onclick="switchCamera('environment')">📷 กล้องหลัง</button>
+            <button class="camera-button" onclick="switchCamera('user')">กล้องหน้า</button>
+            <button class="camera-button" onclick="switchCamera('environment')">กล้องหลัง</button>
             <br>
-            <button class="camera-button" onclick="capturePhoto('front')" style="background: #10b981;">📸 ถ่ายรูปหน้า</button>
-            <button class="camera-button" onclick="capturePhoto('back')" style="background: #3b82f6;">📸 ถ่ายรูปหลัง</button>
+            <button class="camera-button" onclick="capturePhoto('front')" style="background: #10b981;">ถ่ายรูปหน้า</button>
+            <button class="camera-button" onclick="capturePhoto('back')" style="background: #3b82f6;">ถ่ายรูปหลัง</button>
             <br>
             <button class="camera-button" onclick="stopCamera(); document.getElementById('camera-controls').style.display = 'none'; document.getElementById('start-camera').style.display = 'block';" style="background: #ef4444;">⏹️ หยุดกล้อง</button>
         </div>
@@ -1213,8 +1213,6 @@ def main():
     });
     </script>
     """, unsafe_allow_html=True)
-    </script>
-    """, unsafe_allow_html=True)
     if 'camera_permission_granted' not in st.session_state:
         st.session_state.camera_permission_granted = False
     
@@ -1252,6 +1250,545 @@ def main():
     </script>
     """, unsafe_allow_html=True)
 
+# AI Model Functions
+def check_model_status():
+    """ตรวจสอบสถานะโมเดล"""
+    model_files = [
+        "trained_model/classifier.joblib",
+        "trained_model/scaler.joblib", 
+        "trained_model/label_encoder.joblib"
+    ]
+    
+    missing_files = []
+    for file_path in model_files:
+        full_path = project_root / file_path
+        if not full_path.exists():
+            missing_files.append(file_path)
+    
+    return len(missing_files) == 0, missing_files
+
+@error_handler("frontend")
+def classify_image(uploaded_file):
+    """จำแนกรูปภาพ"""
+    try:
+        return local_prediction_from_file(uploaded_file)
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+def local_prediction_from_file(uploaded_file):
+    """การทำนายจากไฟล์ที่อัปโหลด"""
+    try:
+        if cv2 is None:
+            return {
+                "status": "error", 
+                "error": "OpenCV not installed. Please install opencv-python."
+            }
+        
+        # Save uploaded file temporarily
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
+            if hasattr(uploaded_file, 'getvalue'):
+                tmp_file.write(uploaded_file.getvalue())
+            else:
+                tmp_file.write(uploaded_file.read())
+            tmp_path = tmp_file.name
+        
+        result = local_prediction(tmp_path)
+        
+        # Clean up
+        try:
+            os.unlink(tmp_path)
+        except:
+            pass
+            
+        return result
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+def local_prediction(image_path):
+    """การทำนายแบบ local พร้อมข้อมูลครบถ้วน"""
+    try:
+        start_time = time.time()
+        
+        model_available, missing_files = check_model_status()
+        
+        if not model_available:
+            return {
+                "status": "error",
+                "error": f"Missing model files: {', '.join(missing_files)}"
+            }
+        
+        if cv2 is None:
+            return {
+                "status": "error",
+                "error": "OpenCV not installed"
+            }
+
+        # Load models
+        classifier = joblib.load(str(project_root / "trained_model/classifier.joblib"))
+        scaler = joblib.load(str(project_root / "trained_model/scaler.joblib"))
+        label_encoder = joblib.load(str(project_root / "trained_model/label_encoder.joblib"))
+
+        # Process image
+        image = cv2.imread(image_path)
+        if image is None:
+            return {"status": "error", "error": "Cannot read image file"}
+            
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image_resized = cv2.resize(image, (224, 224))
+        image_normalized = image_resized.astype(np.float32) / 255.0
+        features = image_normalized.flatten()
+
+        # Make prediction
+        features_scaled = scaler.transform(features.reshape(1, -1))
+        prediction = classifier.predict(features_scaled)[0]
+        probabilities = classifier.predict_proba(features_scaled)[0]
+        predicted_class = label_encoder.inverse_transform([prediction])[0]
+        confidence = float(probabilities[prediction])
+        
+        processing_time = time.time() - start_time
+
+        # Get amulet information
+        amulet_info = AMULET_INFO.get(predicted_class, {
+            "thai_name": predicted_class,
+            "full_name": predicted_class,
+            "temple": "ไม่ระบุ",
+            "period": "ไม่ระบุ",
+            "description": "ไม่มีข้อมูล",
+            "price_range": {"min": 0, "max": 0, "avg": 0}
+        })
+        
+        # Create top 3 predictions
+        all_classes = label_encoder.classes_
+        top_3_indices = np.argsort(probabilities)[-3:][::-1]
+        top_3_predictions = []
+        
+        for i, idx in enumerate(top_3_indices):
+            class_name = all_classes[idx]
+            prob = float(probabilities[idx])
+            info = AMULET_INFO.get(class_name, {"thai_name": class_name})
+            
+            # Color coding
+            if prob > 0.7:
+                color = "#4caf50"
+                color_name = "สูง"
+            elif prob > 0.3:
+                color = "#ff9800"
+                color_name = "ปานกลาง"
+            else:
+                color = "#f44336"
+                color_name = "ต่ำ"
+                
+            top_3_predictions.append({
+                "rank": i + 1,
+                "class": class_name,
+                "thai_name": info.get("thai_name", class_name),
+                "confidence": prob,
+                "color": color,
+                "color_name": color_name
+            })
+
+        return {
+            "status": "success",
+            "predicted_class": predicted_class,
+            "thai_name": amulet_info["thai_name"],
+            "full_name": amulet_info["full_name"],
+            "confidence": confidence,
+            "processing_time": processing_time,
+            "method": "Local AI Model (RandomForest)",
+            "amulet_info": amulet_info,
+            "top_3_predictions": top_3_predictions,
+            "probabilities": {
+                all_classes[i]: float(prob)
+                for i, prob in enumerate(probabilities)
+            }
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+def display_classification_result_enhanced(result, image_label="", show_confidence=True):
+    """แสดงผลการจำแนกแบบครบถ้วน"""
+    if result.get("status") == "success" or "predicted_class" in result:
+        predicted_class = result.get('predicted_class', 'Unknown')
+        thai_name = result.get('thai_name', predicted_class)
+        full_name = result.get('full_name', thai_name)
+        confidence = result.get('confidence', 0)
+        processing_time = result.get('processing_time', 0)
+        amulet_info = result.get('amulet_info', {})
+        top_3 = result.get('top_3_predictions', [])
+
+        # Header result
+        st.markdown(f"""
+        <div class="success-box">
+            <h3>\U0001F50D ผลการวิเคราะห์{image_label}</h3>
+            <p style="font-size: 1.3rem; margin: 15px 0;"><strong>\u2705 ประเภทพระ:</strong> {full_name}</p>
+            <p style="font-size: 1.2rem; margin: 10px 0;"><strong>\U0001F4CA ความมั่นใจ:</strong> 
+                <span style="color: {'#4caf50' if confidence > 0.8 else '#ff9800' if confidence > 0.6 else '#f44336'}; font-weight: bold;">
+                    {confidence:.1%} ({'สูงมาก' if confidence > 0.8 else 'ปานกลาง' if confidence > 0.6 else 'ต่ำ'})
+                </span>
+            </p>
+            <p style="font-size: 1.1rem; margin: 10px 0;"><strong>\u23F1\uFE0F เวลาประมวลผล:</strong> {processing_time:.1f} วินาที</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Top 3 Predictions
+        if top_3:
+            st.markdown(f"""
+            <div class="info-box">
+                <h4>\U0001F3C6 Top 3 การทำนาย{image_label}</h4>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                    <thead>
+                        <tr style="background: rgba(128,0,0,0.1);">
+                            <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">อันดับ</th>
+                            <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">รุ่น/พิมพ์</th>
+                            <th style="padding: 8px; text-align: center; border: 1px solid #ddd;">ความมั่นใจ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            """, unsafe_allow_html=True)
+            
+            medals = ["🥇", "🥈", "🥉"]
+            for i, pred in enumerate(top_3):
+                st.markdown(f"""
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{medals[i]} #{pred['rank']}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{pred['thai_name']}</td>
+                            <td style="padding: 8px; text-align: center; border: 1px solid #ddd; font-weight: bold; color: {pred['color']};">{pred['confidence']:.1%}</td>
+                        </tr>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("</tbody></table></div>", unsafe_allow_html=True)
+
+        # Historical Information
+        st.markdown(f"""
+        <div class="tips-card">
+            <h4>\U0001F4C5 ข้อมูลประวัติศาสตร์</h4>
+            <ul style="font-size: 1.1rem; line-height: 1.6;">
+                <li><strong>ปีที่สร้าง:</strong> {amulet_info.get('period', 'ไม่ระบุ')}</li>
+                <li><strong>วัด/สถานที่:</strong> {amulet_info.get('temple', 'ไม่ระบุ')}</li>
+                <li><strong>คำอธิบาย:</strong> {amulet_info.get('description', 'ไม่มีข้อมูล')}</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Market Information
+        price_info = amulet_info.get('price_range', {})
+        if price_info.get('max', 0) > 0:
+            st.markdown(f"""
+            <div class="warning-box">
+                <h4>\U0001F4B0 ช่วงราคาตลาด (ข้อมูลอ้างอิง)</h4>
+                <ul style="font-size: 1.1rem; line-height: 1.6;">
+                    <li><strong>ต่ำสุด:</strong> {price_info.get('min', 0):,} บาท</li>
+                    <li><strong>สูงสุด:</strong> {price_info.get('max', 0):,} บาท</li>
+                    <li><strong>ราคาเฉลี่ย:</strong> {price_info.get('avg', 0):,} บาท</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # Confidence bar
+        if show_confidence and confidence > 0:
+            st.progress(confidence)
+
+        st.caption(f"🤖 {result.get('method', 'AI Model')}")
+
+    else:
+        error_msg = result.get('error', 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ')
+        st.markdown(f"""
+        <div class="error-box">
+            <h4>\u274C เกิดข้อผิดพลาด{image_label}</h4>
+            <p style="font-size: 1.1rem;">{error_msg}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+def create_camera_interface():
+    """สร้าง interface สำหรับกล้อง"""
+    st.markdown("""
+    <div class="info-box">
+        <h4>📷 ฟีเจอร์กล้อง (Mobile Optimized)</h4>
+        <p>ฟีเจอร์กล้องทำงานได้ดีที่สุดบนมือถือ</p>
+        <p><strong>วิธีใช้งาน:</strong> เปิดเว็บไซต์ผ่านมือถือ แล้วใช้ปุ่ม "ถ่ายรูป" ในแต่ละแท็บ</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Get logos
+    """สร้าง interface สำหรับกล้อง"""
+    st.markdown("""
+    <div class="camera-container">
+        <h4>📷 ถ่ายรูปด้วยกล้อง</h4>
+        <p>กดปุ่มเพื่อเริ่มใช้กล้อง (ขออนุญาตครั้งเดียว ใช้ได้ทั้งหน้าและหลัง)</p>
+        
+        <button class="camera-button" onclick="alert('Camera feature available - check mobile version')">🎥 เริ่มใช้กล้อง</button>
+    </div>
+    """, unsafe_allow_html=True)
+
+def check_model_status():
+    """ตรวจสอบสถานะโมเดล"""
+    model_files = [
+        "trained_model/classifier.joblib",
+        "trained_model/scaler.joblib", 
+        "trained_model/label_encoder.joblib"
+    ]
+    
+    missing_files = []
+    for file_path in model_files:
+        full_path = project_root / file_path
+        if not full_path.exists():
+            missing_files.append(file_path)
+    
+    return len(missing_files) == 0, missing_files
+
+@error_handler("frontend")
+def classify_image(uploaded_file):
+    """จำแนกรูปภาพ"""
+    try:
+        return local_prediction_from_file(uploaded_file)
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+def local_prediction_from_file(uploaded_file):
+    """การทำนายจากไฟล์ที่อัปโหลด"""
+    try:
+        if cv2 is None:
+            return {
+                "status": "error", 
+                "error": "OpenCV not installed. Please install opencv-python."
+            }
+        
+        # Save uploaded file temporarily
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
+            if hasattr(uploaded_file, 'getvalue'):
+                tmp_file.write(uploaded_file.getvalue())
+            else:
+                tmp_file.write(uploaded_file.read())
+            tmp_path = tmp_file.name
+        
+        result = local_prediction(tmp_path)
+        
+        # Clean up
+        try:
+            os.unlink(tmp_path)
+        except:
+            pass
+            
+        return result
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+def local_prediction(image_path):
+    """การทำนายแบบ local พร้อมข้อมูลครบถ้วน"""
+    try:
+        start_time = time.time()
+        
+        model_available, missing_files = check_model_status()
+        
+        if not model_available:
+            return {
+                "status": "error",
+                "error": f"Missing model files: {', '.join(missing_files)}"
+            }
+        
+        if cv2 is None:
+            return {
+                "status": "error",
+                "error": "OpenCV not installed"
+            }
+
+        # Load models
+        classifier = joblib.load(str(project_root / "trained_model/classifier.joblib"))
+        scaler = joblib.load(str(project_root / "trained_model/scaler.joblib"))
+        label_encoder = joblib.load(str(project_root / "trained_model/label_encoder.joblib"))
+
+        # Process image
+        image = cv2.imread(image_path)
+        if image is None:
+            return {"status": "error", "error": "Cannot read image file"}
+            
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image_resized = cv2.resize(image, (224, 224))
+        image_normalized = image_resized.astype(np.float32) / 255.0
+        features = image_normalized.flatten()
+
+        # Make prediction
+        features_scaled = scaler.transform(features.reshape(1, -1))
+        prediction = classifier.predict(features_scaled)[0]
+        probabilities = classifier.predict_proba(features_scaled)[0]
+        predicted_class = label_encoder.inverse_transform([prediction])[0]
+        confidence = float(probabilities[prediction])
+        
+        processing_time = time.time() - start_time
+
+        # Get amulet information
+        amulet_info = AMULET_INFO.get(predicted_class, {
+            "thai_name": predicted_class,
+            "full_name": predicted_class,
+            "temple": "ไม่ระบุ",
+            "period": "ไม่ระบุ",
+            "description": "ไม่มีข้อมูล",
+            "price_range": {"min": 0, "max": 0, "avg": 0}
+        })
+        
+        # Create top 3 predictions
+        all_classes = label_encoder.classes_
+        top_3_indices = np.argsort(probabilities)[-3:][::-1]
+        top_3_predictions = []
+        
+        for i, idx in enumerate(top_3_indices):
+            class_name = all_classes[idx]
+            prob = float(probabilities[idx])
+            info = AMULET_INFO.get(class_name, {"thai_name": class_name})
+            
+            # Color coding
+            if prob > 0.7:
+                color = "#4caf50"
+                color_name = "สูง"
+            elif prob > 0.3:
+                color = "#ff9800"
+                color_name = "ปานกลาง"
+            else:
+                color = "#f44336"
+                color_name = "ต่ำ"
+                
+            top_3_predictions.append({
+                "rank": i + 1,
+                "class": class_name,
+                "thai_name": info.get("thai_name", class_name),
+                "confidence": prob,
+                "color": color,
+                "color_name": color_name
+            })
+
+        return {
+            "status": "success",
+            "predicted_class": predicted_class,
+            "thai_name": amulet_info["thai_name"],
+            "full_name": amulet_info["full_name"],
+            "confidence": confidence,
+            "processing_time": processing_time,
+            "method": "Local AI Model (RandomForest)",
+            "amulet_info": amulet_info,
+            "top_3_predictions": top_3_predictions,
+            "probabilities": {
+                all_classes[i]: float(prob)
+                for i, prob in enumerate(probabilities)
+            }
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+def display_classification_result(result, show_confidence=True, show_probabilities=True):
+    """แสดงผลการจำแนกแบบครบถ้วน"""
+    if result.get("status") == "success" or "predicted_class" in result:
+        predicted_class = result.get('predicted_class', 'Unknown')
+        thai_name = result.get('thai_name', predicted_class)
+        full_name = result.get('full_name', thai_name)
+        confidence = result.get('confidence', 0)
+        processing_time = result.get('processing_time', 0)
+        amulet_info = result.get('amulet_info', {})
+        top_3 = result.get('top_3_predictions', [])
+
+        # Header result
+        st.markdown(f"""
+        <div class="success-box">
+            <h2>ผลการวิเคราะห์เบื้องต้น</h2>
+            <p style="font-size: 1.4rem; margin: 15px 0;"><strong>✅ ประเภทพระ:</strong> {full_name}</p>
+            <p style="font-size: 1.3rem; margin: 10px 0;"><strong>ความมั่นใจ:</strong> 
+                <span style="color: {'#4caf50' if confidence > 0.8 else '#ff9800' if confidence > 0.6 else '#f44336'}; font-weight: bold;">
+                    {confidence:.1%} ({'สูงมาก' if confidence > 0.8 else 'ปานกลาง' if confidence > 0.6 else 'ต่ำ'})
+                </span>
+            </p>
+            <p style="font-size: 1.2rem; margin: 10px 0;"><strong>⏱️ เวลาประมวลผล:</strong> {processing_time:.1f} วินาที</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Top 3 Predictions
+        if top_3:
+            st.markdown("""
+            <div class="info-box">
+                <h3>🏆 Top 3 การทำนาย</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                    <thead>
+                        <tr style="background: rgba(128,0,0,0.1);">
+                            <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">อันดับ</th>
+                            <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">รุ่น/พิมพ์</th>
+                            <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">ความมั่นใจ</th>
+                            <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">แถบสี</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            """, unsafe_allow_html=True)
+            
+            medals = ["🥇", "🥈", "🥉"]
+            for i, pred in enumerate(top_3):
+                st.markdown(f"""
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd;">{medals[i]} #{pred['rank']}</td>
+                            <td style="padding: 12px; border: 1px solid #ddd;">{pred['thai_name']}</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd; font-weight: bold;">{pred['confidence']:.1%}</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;"><span style="color: {pred['color']}; font-weight: bold;">●</span> {pred['color_name']}</td>
+                        </tr>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("</tbody></table></div>", unsafe_allow_html=True)
+
+        # Market Information (Mocked)
+        price_info = amulet_info.get('price_range', {})
+        if price_info.get('max', 0) > 0:
+            st.markdown(f"""
+            <div class="warning-box">
+                <h3>📈 ข้อมูลตลาด (Web Scraping Data – Mocked)</h3>
+                <p style="font-size: 1.1rem; margin-bottom: 15px;">ดึงจาก: เว็บพระ, ตลาดพระ, eBay, pantipmarket (ข้อมูลจำลอง)</p>
+                
+                <h4>💰 ช่วงราคาซื้อขาย (ย้อนหลัง 3 ปี):</h4>
+                <ul style="font-size: 1.1rem; line-height: 1.8;">
+                    <li><strong>ต่ำสุด:</strong> {price_info.get('min', 0):,} บาท</li>
+                    <li><strong>สูงสุด:</strong> {price_info.get('max', 0):,} บาท</li>
+                    <li><strong>ราคาเฉลี่ย:</strong> {price_info.get('avg', 0):,} บาท</li>
+                </ul>
+                
+                <h4>🏛️ ฐานข้อมูลการขาย:</h4>
+                <ul style="font-size: 1.1rem; line-height: 1.8;">
+                    <li><strong>เว็บพระ (2023):</strong> ปิดประมูลที่ {int(price_info.get('avg', 0) * 0.8):,} บาท</li>
+                    <li><strong>ตลาดพระออนไลน์ (2024):</strong> {int(price_info.get('avg', 0) * 1.1):,} บาท</li>
+                    <li><strong>eBay (2024):</strong> {int(price_info.get('avg', 0) / 35):,} USD (~{int(price_info.get('avg', 0) * 0.9):,} บาท)</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # Historical Information
+        st.markdown(f"""
+        <div class="tips-card">
+            <h3>📅 ข้อมูลประวัติศาสตร์</h3>
+            <ul style="font-size: 1.2rem; line-height: 1.8;">
+                <li><strong>ปีที่สร้าง (ประมาณ):</strong> {amulet_info.get('period', 'ไม่ระบุ')}</li>
+                <li><strong>วัด/สถานที่:</strong> {amulet_info.get('temple', 'ไม่ระบุ')}</li>
+                <li><strong>คำอธิบาย:</strong> {amulet_info.get('description', 'ไม่มีข้อมูล')}</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Confidence bar
+        if show_confidence and confidence > 0:
+            st.progress(confidence)
+            st.caption(f"ความเชื่อมั่น: {confidence:.2%}")
+
+        st.caption(f"🤖 วิธีการทำนาย: {result.get('method', 'Unknown')}")
+
+    else:
+        error_msg = result.get('error', 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ')
+        st.markdown(f"""
+        <div class="error-box">
+            <h3>❌ เกิดข้อผิดพลาด</h3>
+            <p style="font-size: 1.2rem;">{error_msg}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
     # Get logos
     amulet_logo = get_logo_base64()
     other_logos = get_other_logos()
@@ -1268,7 +1805,7 @@ def main():
         logo_right_html += f'<img src="data:image/png;base64,{other_logos["depa"]}" class="logo-img-small" alt="DEPA">'
 
     # Header แบบข้อความธรรมดา
-    st.title("🔮 Amulet-AI")
+    st.title("Amulet-AI")
     st.subheader("ระบบวิเคราะห์พระเครื่อง ด้วย Computer AI อัจฉริยะ")
 
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
@@ -1279,7 +1816,7 @@ def main():
     show_probabilities = True
 
     # Create Tabs for different sections
-    tab1, tab2, tab3, tab4 = st.tabs(["🏠 หน้าหลัก", "📖 เกี่ยวกับระบบ", "📚 คู่มือการใช้งาน", "❓ คำถามที่พบบ่อย"])
+    tab1, tab2, tab3, tab4 = st.tabs(["หน้าหลัก", "เกี่ยวกับระบบ", "คู่มือการใช้งาน", "คำถามที่พบบ่อย"])
 
     # Tab 1: Main Upload Section
     with tab1:
@@ -1303,7 +1840,7 @@ def main():
         # Upload Section Header
         st.markdown("""
         <div style="text-align: center; margin-bottom: 2rem;">
-            <h2 style="margin-bottom: 0.5rem;">📸 อัปโหลดรูปพระเครื่อง</h2>
+            <h2 style="margin-bottom: 0.5rem;">� อัปโหลดรูปพระเครื่อง</h2>
             <p style="font-size: 1.15rem; color: #6c757d;">
                 อัปโหลดรูปภาพด้านหน้าและด้านหลังของพระเครื่องเพื่อเริ่มการวิเคราะห์
             </p>
@@ -1361,14 +1898,14 @@ def main():
 
 def dual_image_mode(show_confidence, show_probabilities):
     """โหมดสองด้าน - ปรับปรุงสำหรับมือถือ"""
-    st.markdown("### 📸 อัปโหลดรูปทั้งสองด้าน")
+    st.markdown("### อัปโหลดรูปทั้งสองด้าน")
     
     # ตรวจสอบว่าเป็นมือถือหรือไม่
-    is_mobile = st.checkbox("📱 ใช้งานบนมือถือ (แสดงแบบแนวตั้ง)", value=False)
+    is_mobile = st.checkbox("ใช้งานบนมือถือ (แสดงแบบแนวตั้ง)", value=False)
     
     if is_mobile:
         # โหมดมือถือ - แสดงแนวตั้ง
-        st.markdown("#### 📱 โหมดมือถือ")
+        st.markdown("#### โหมดมือถือ")
         
         # Camera interface
         create_camera_interface()
@@ -1376,7 +1913,7 @@ def dual_image_mode(show_confidence, show_probabilities):
         st.markdown("---")
         
         # Front image section
-        st.markdown("#### 📷 รูปด้านหน้า")
+        st.markdown("#### รูปด้านหน้า")
         front_image = st.file_uploader(
             "อัปโหลดรูปด้านหน้า", 
             type=['png', 'jpg', 'jpeg'], 
@@ -1391,7 +1928,7 @@ def dual_image_mode(show_confidence, show_probabilities):
         st.markdown("---")
         
         # Back image section  
-        st.markdown("#### 📷 รูปด้านหลัง")
+        st.markdown("#### รูปด้านหลัง")
         back_image = st.file_uploader(
             "อัปโหลดรูปด้านหลัง", 
             type=['png', 'jpg', 'jpeg'], 
@@ -1483,13 +2020,13 @@ def dual_image_mode(show_confidence, show_probabilities):
                     with col1:
                         st.markdown('<div class="result-card">', unsafe_allow_html=True)
                         st.markdown("#### ด้านหน้า")
-                        display_classification_result(front_result, show_confidence, show_probabilities)
+                        display_classification_result_enhanced(front_result, " (ด้านหน้า)", show_confidence)
                         st.markdown('</div>', unsafe_allow_html=True)
 
                     with col2:
                         st.markdown('<div class="result-card">', unsafe_allow_html=True)
                         st.markdown("#### ด้านหลัง")
-                        display_classification_result(back_result, show_confidence, show_probabilities)
+                        display_classification_result_enhanced(back_result, " (ด้านหลัง)", show_confidence)
                         st.markdown('</div>', unsafe_allow_html=True)
 
                     # Comparison
@@ -1537,7 +2074,7 @@ def dual_image_mode(show_confidence, show_probabilities):
 
 def show_faq_section():
     """แสดงส่วนคำถามที่พบบ่อย"""
-    st.markdown("## ❓ คำถามที่พบบ่อย (FAQ)")
+    st.markdown("## คำถามที่พบบ่อย (FAQ)")
     st.markdown("<p style='text-align: center; font-size: 1.3rem; color: #6c757d;'>ข้อมูลสำคัญที่ควรทราบก่อนใช้งานระบบ</p>", unsafe_allow_html=True)
 
     # Expectations & Limitations
@@ -1833,7 +2370,7 @@ def show_tips_section():
             <strong>• ถ้าคุณต้องการความช่วยเหลือ</strong> — อ่านคู่มือ / FAQ ในเมนู Documentation
         </p>
     </div>
-    """, unsafe_allow_html=True)    
+    """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
