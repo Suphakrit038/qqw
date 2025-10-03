@@ -50,9 +50,57 @@ except:
         def log_performance(func_name, execution_time):
             pass
 
-# Configuration
-API_BASE_URL = "http://localhost:8000"
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+# Thai amulet information database
+AMULET_INFO = {
+    "phra_sivali": {
+        "thai_name": "พระสีวลี",
+        "full_name": "พระสีวลี มหาลาภ",
+        "temple": "วัดต่างๆ",
+        "period": "พ.ศ. 2400-2500",
+        "description": "พระที่เชื่อว่านำโชคลาภ มีเงินทองใช้ไม่ขาดมือ",
+        "price_range": {"min": 500, "max": 15000, "avg": 3500}
+    },
+    "portrait_back": {
+        "thai_name": "พระรูปหล่อหลังภาพ",
+        "full_name": "พระรูปหล่อ หลังภาพพระ",
+        "temple": "วัดต่างๆ",
+        "period": "พ.ศ. 2450-2550",
+        "description": "พระรูปหล่อที่มีภาพพระด้านหลัง นิยมในยุคปัจจุบัน",
+        "price_range": {"min": 300, "max": 8000, "avg": 2200}
+    },
+    "prok_bodhi_9_leaves": {
+        "thai_name": "ใบโพธิ์ 9 ใบ",
+        "full_name": "พระใบโพธิ์ 9 ใบ",
+        "temple": "วัดมหาธาตุ และวัดต่างๆ",
+        "period": "พ.ศ. 2380-2450",
+        "description": "พระโบราณที่มีรูปแบบใบโพธิ์ 9 ใบ สวยงามและหายาก",
+        "price_range": {"min": 2000, "max": 25000, "avg": 8500}
+    },
+    "somdej_pratanporn_buddhagavak": {
+        "thai_name": "พระสมเด็จ ประตานพรณ์",
+        "full_name": "พระสมเด็จ วัดประตานพรณ์ พิมพ์ใหญ่",
+        "temple": "วัดประตานพรณ์ (วัดระฆัง)",
+        "period": "พ.ศ. 2397-2415 (รัชกาลที่ 4)",
+        "description": "พระสมเด็จสายวัดระฆัง ของสมเด็จพระพุฒาจารย์ (โต พรหมรังสี)",
+        "price_range": {"min": 5000, "max": 150000, "avg": 35000}
+    },
+    "waek_man": {
+        "thai_name": "แหวนมาน",
+        "full_name": "แหวนมานต์ขลัง",
+        "temple": "วัดต่างๆ ในภาคเหนือ",
+        "period": "พ.ศ. 2400-2500",
+        "description": "แหวนมนต์ขลัง ป้องกันภัยและเสริมดวง",
+        "price_range": {"min": 800, "max": 12000, "avg": 4200}
+    },
+    "wat_nong_e_duk": {
+        "thai_name": "พระวัดหนองอีดุก",
+        "full_name": "พระวัดหนองอีดุก จ.สุพรรณบุรี",
+        "temple": "วัดหนองอีดุก สุพรรณบุรี",
+        "period": "พ.ศ. 2480-2530",
+        "description": "พระขุนแผนจากวัดหนองอีดุก มีชื่อเสียงด้านเมตตามหานิยม",
+        "price_range": {"min": 1200, "max": 18000, "avg": 6800}
+    }
+}
 
 # Theme Colors
 COLORS = {
@@ -515,8 +563,10 @@ def local_prediction_from_file(uploaded_file):
         return {"status": "error", "error": str(e)}
 
 def local_prediction(image_path):
-    """การทำนายแบบ local"""
+    """การทำนายแบบ local พร้อมข้อมูลครบถ้วน"""
     try:
+        start_time = time.time()
+        
         model_available, missing_files = check_model_status()
         
         if not model_available:
@@ -531,38 +581,82 @@ def local_prediction(image_path):
                 "error": "OpenCV not installed"
             }
 
+        # Load models
         classifier = joblib.load(str(project_root / "trained_model/classifier.joblib"))
         scaler = joblib.load(str(project_root / "trained_model/scaler.joblib"))
         label_encoder = joblib.load(str(project_root / "trained_model/label_encoder.joblib"))
 
+        # Process image
         image = cv2.imread(image_path)
+        if image is None:
+            return {"status": "error", "error": "Cannot read image file"}
+            
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image_resized = cv2.resize(image, (224, 224))
         image_normalized = image_resized.astype(np.float32) / 255.0
         features = image_normalized.flatten()
 
+        # Make prediction
         features_scaled = scaler.transform(features.reshape(1, -1))
         prediction = classifier.predict(features_scaled)[0]
         probabilities = classifier.predict_proba(features_scaled)[0]
         predicted_class = label_encoder.inverse_transform([prediction])[0]
         confidence = float(probabilities[prediction])
+        
+        processing_time = time.time() - start_time
 
-        try:
-            labels_path = project_root / "trained_model/labels.json"
-            with open(labels_path, 'r', encoding='utf-8') as f:
-                labels = json.load(f)
-            thai_name = labels.get(predicted_class, predicted_class)
-        except:
-            thai_name = predicted_class
+        # Get amulet information
+        amulet_info = AMULET_INFO.get(predicted_class, {
+            "thai_name": predicted_class,
+            "full_name": predicted_class,
+            "temple": "ไม่ระบุ",
+            "period": "ไม่ระบุ",
+            "description": "ไม่มีข้อมูล",
+            "price_range": {"min": 0, "max": 0, "avg": 0}
+        })
+        
+        # Create top 3 predictions
+        all_classes = label_encoder.classes_
+        top_3_indices = np.argsort(probabilities)[-3:][::-1]
+        top_3_predictions = []
+        
+        for i, idx in enumerate(top_3_indices):
+            class_name = all_classes[idx]
+            prob = float(probabilities[idx])
+            info = AMULET_INFO.get(class_name, {"thai_name": class_name})
+            
+            # Color coding
+            if prob > 0.7:
+                color = "🟢"
+                color_name = "เขียว"
+            elif prob > 0.3:
+                color = "🟡"
+                color_name = "เหลือง"
+            else:
+                color = "🔴"
+                color_name = "แดง"
+                
+            top_3_predictions.append({
+                "rank": i + 1,
+                "class": class_name,
+                "thai_name": info.get("thai_name", class_name),
+                "confidence": prob,
+                "color": color,
+                "color_name": color_name
+            })
 
         return {
             "status": "success",
             "predicted_class": predicted_class,
-            "thai_name": thai_name,
+            "thai_name": amulet_info["thai_name"],
+            "full_name": amulet_info["full_name"],
             "confidence": confidence,
-            "method": "Local Model",
+            "processing_time": processing_time,
+            "method": "Local AI Model (RandomForest)",
+            "amulet_info": amulet_info,
+            "top_3_predictions": top_3_predictions,
             "probabilities": {
-                label_encoder.classes_[i]: float(prob)
+                all_classes[i]: float(prob)
                 for i, prob in enumerate(probabilities)
             }
         }
@@ -574,47 +668,117 @@ def local_prediction(image_path):
         }
 
 def display_classification_result(result, show_confidence=True, show_probabilities=True):
-    """แสดงผลการจำแนก"""
+    """แสดงผลการจำแนกแบบครบถ้วน"""
     if result.get("status") == "success" or "predicted_class" in result:
         predicted_class = result.get('predicted_class', 'Unknown')
         thai_name = result.get('thai_name', predicted_class)
+        full_name = result.get('full_name', thai_name)
         confidence = result.get('confidence', 0)
+        processing_time = result.get('processing_time', 0)
+        amulet_info = result.get('amulet_info', {})
+        top_3 = result.get('top_3_predictions', [])
 
+        # Header result
         st.markdown(f"""
         <div class="success-box">
-            <h3>ผลการจำแนก</h3>
-            <p style="font-size: 1.2rem;"><strong>ประเภทพระเครื่อง:</strong> {predicted_class}</p>
-            <p style="font-size: 1.2rem;"><strong>ชื่อภาษาไทย:</strong> {thai_name}</p>
+            <h2>🔍 ผลการวิเคราะห์เบื้องต้น</h2>
+            <p style="font-size: 1.4rem; margin: 15px 0;"><strong>✅ ประเภทพระ:</strong> {full_name}</p>
+            <p style="font-size: 1.3rem; margin: 10px 0;"><strong>📊 ความมั่นใจ:</strong> 
+                <span style="color: {'#4caf50' if confidence > 0.8 else '#ff9800' if confidence > 0.6 else '#f44336'}; font-weight: bold;">
+                    {confidence:.1%} ({'สูงมาก' if confidence > 0.8 else 'ปานกลาง' if confidence > 0.6 else 'ต่ำ'})
+                </span>
+            </p>
+            <p style="font-size: 1.2rem; margin: 10px 0;"><strong>⏱️ เวลาประมวลผล:</strong> {processing_time:.1f} วินาที</p>
         </div>
         """, unsafe_allow_html=True)
 
+        # Top 3 Predictions
+        if top_3:
+            st.markdown("""
+            <div class="info-box">
+                <h3>🏆 Top 3 การทำนาย</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                    <thead>
+                        <tr style="background: rgba(128,0,0,0.1);">
+                            <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">อันดับ</th>
+                            <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">รุ่น/พิมพ์</th>
+                            <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">ความมั่นใจ</th>
+                            <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">แถบสี</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            """, unsafe_allow_html=True)
+            
+            medals = ["🥇", "🥈", "🥉"]
+            for i, pred in enumerate(top_3):
+                st.markdown(f"""
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 12px; border: 1px solid #ddd;">{medals[i]} {pred['rank']}</td>
+                            <td style="padding: 12px; border: 1px solid #ddd;">{pred['thai_name']}</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd; font-weight: bold;">{pred['confidence']:.1%}</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">{pred['color']} {pred['color_name']}</td>
+                        </tr>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("</tbody></table></div>", unsafe_allow_html=True)
+
+        # Market Information (Mocked)
+        price_info = amulet_info.get('price_range', {})
+        if price_info.get('max', 0) > 0:
+            st.markdown(f"""
+            <div class="warning-box">
+                <h3>📈 ข้อมูลตลาด (Web Scraping Data – Mocked)</h3>
+                <p style="font-size: 1.1rem; margin-bottom: 15px;">ดึงจาก: เว็บพระ, ตลาดพระ, eBay, pantipmarket (ข้อมูลจำลอง)</p>
+                
+                <h4>💰 ช่วงราคาซื้อขาย (ย้อนหลัง 3 ปี):</h4>
+                <ul style="font-size: 1.1rem; line-height: 1.8;">
+                    <li><strong>ต่ำสุด:</strong> {price_info.get('min', 0):,} บาท</li>
+                    <li><strong>สูงสุด:</strong> {price_info.get('max', 0):,} บาท</li>
+                    <li><strong>ราคาเฉลี่ย:</strong> {price_info.get('avg', 0):,} บาท</li>
+                </ul>
+                
+                <h4>🏛️ ฐานข้อมูลการขาย:</h4>
+                <ul style="font-size: 1.1rem; line-height: 1.8;">
+                    <li><strong>เว็บพระ (2023):</strong> ปิดประมูลที่ {int(price_info.get('avg', 0) * 0.8):,} บาท</li>
+                    <li><strong>ตลาดพระออนไลน์ (2024):</strong> {int(price_info.get('avg', 0) * 1.1):,} บาท</li>
+                    <li><strong>eBay (2024):</strong> {int(price_info.get('avg', 0) / 35):,} USD (~{int(price_info.get('avg', 0) * 0.9):,} บาท)</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # Historical Information
+        st.markdown(f"""
+        <div class="tips-card">
+            <h3>📅 ข้อมูลประวัติศาสตร์</h3>
+            <ul style="font-size: 1.2rem; line-height: 1.8;">
+                <li><strong>ปีที่สร้าง (ประมาณ):</strong> {amulet_info.get('period', 'ไม่ระบุ')}</li>
+                <li><strong>วัด/สถานที่:</strong> {amulet_info.get('temple', 'ไม่ระบุ')}</li>
+                <li><strong>คำอธิบาย:</strong> {amulet_info.get('description', 'ไม่มีข้อมูล')}</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Confidence bar
         if show_confidence and confidence > 0:
             conf_color = "#4caf50" if confidence > 0.8 else "#ff9800" if confidence > 0.6 else "#f44336"
             st.markdown(f"""
             <div style="background: rgba(255,255,255,0.9); padding: 20px; border-radius: 10px; margin: 15px 0;">
-                <h4>ความเชื่อมั่น: <span style="color: {conf_color};">{confidence:.1%}</span></h4>
-                <div style="background: #e0e0e0; border-radius: 10px; height: 20px;">
-                    <div style="background: {conf_color}; width: {confidence*100}%; height: 100%; border-radius: 10px;"></div>
+                <h4>📊 แถบความเชื่อมั่น</h4>
+                <div style="background: #e0e0e0; border-radius: 10px; height: 25px; position: relative;">
+                    <div style="background: {conf_color}; width: {confidence*100}%; height: 100%; border-radius: 10px; transition: width 0.3s ease;"></div>
+                    <span style="position: absolute; top: 2px; left: 10px; font-weight: bold; color: #333;">{confidence:.1%}</span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
-        if show_probabilities and 'probabilities' in result:
-            st.markdown("#### ความน่าจะเป็นแต่ละประเภท")
-            probabilities = result['probabilities']
-            sorted_probs = sorted(probabilities.items(), key=lambda x: x[1], reverse=True)[:5]
-            
-            for class_name, prob in sorted_probs:
-                st.progress(prob, text=f"{class_name}: {prob:.1%}")
-
-        st.caption(f"วิธีการทำนาย: {result.get('method', 'Unknown')}")
+        st.caption(f"🤖 วิธีการทำนาย: {result.get('method', 'Unknown')}")
 
     else:
         error_msg = result.get('error', 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ')
         st.markdown(f"""
         <div class="error-box">
-            <h3>เกิดข้อผิดพลาด</h3>
-            <p>{error_msg}</p>
+            <h3>❌ เกิดข้อผิดพลาด</h3>
+            <p style="font-size: 1.2rem;">{error_msg}</p>
         </div>
         """, unsafe_allow_html=True)
 
