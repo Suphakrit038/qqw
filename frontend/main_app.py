@@ -1002,7 +1002,7 @@ def create_camera_interface():
             <button class="camera-button" onclick="capturePhoto('front')" style="background: #10b981;">ถ่ายรูปหน้า</button>
             <button class="camera-button" onclick="capturePhoto('back')" style="background: #3b82f6;">ถ่ายรูปหลัง</button>
             <br>
-            <button class="camera-button" onclick="stopCamera(); document.getElementById('camera-controls').style.display = 'none'; document.getElementById('start-camera').style.display = 'block';" style="background: #ef4444;">⏹️ หยุดกล้อง</button>
+            <button class="camera-button" onclick="stopCamera(); document.getElementById('camera-controls').style.display = 'none'; document.getElementById('start-camera').style.display = 'block';" style="background: #ef4444;">หยุดกล้อง</button>
         </div>
     </div>
     """, unsafe_allow_html=True)
