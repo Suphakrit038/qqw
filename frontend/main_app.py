@@ -993,7 +993,7 @@ def extract_image_features(image_path):
     try:
         import numpy as np
         
-        if cv2 is None:
+        if not CV2_AVAILABLE:
             return None
             
         # Load image
