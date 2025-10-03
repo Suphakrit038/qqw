@@ -1421,16 +1421,19 @@ def display_classification_result_enhanced(result, image_label="", show_confiden
         top_3 = result.get('top_3_predictions', [])
 
         # Header result
+        color_class = '#4caf50' if confidence > 0.8 else '#ff9800' if confidence > 0.6 else '#f44336'
+        confidence_level = 'สูงมาก' if confidence > 0.8 else 'ปานกลาง' if confidence > 0.6 else 'ต่ำ'
+        
         st.markdown(f"""
         <div class="success-box">
-            <h3>\U0001F50D ผลการวิเคราะห์{image_label}</h3>
-            <p style="font-size: 1.3rem; margin: 15px 0;"><strong>\u2705 ประเภทพระ:</strong> {full_name}</p>
-            <p style="font-size: 1.2rem; margin: 10px 0;"><strong>\U0001F4CA ความมั่นใจ:</strong> 
-                <span style="color: {'#4caf50' if confidence > 0.8 else '#ff9800' if confidence > 0.6 else '#f44336'}; font-weight: bold;">
-                    {confidence:.1%} ({'สูงมาก' if confidence > 0.8 else 'ปานกลาง' if confidence > 0.6 else 'ต่ำ'})
+            <h3>ผลการวิเคราะห์{image_label}</h3>
+            <p style="font-size: 1.3rem; margin: 15px 0;"><strong>ประเภทพระ:</strong> {full_name}</p>
+            <p style="font-size: 1.2rem; margin: 10px 0;"><strong>ความมั่นใจ:</strong> 
+                <span style="color: {color_class}; font-weight: bold;">
+                    {confidence:.1%} ({confidence_level})
                 </span>
             </p>
-            <p style="font-size: 1.1rem; margin: 10px 0;"><strong>\u23F1\uFE0F เวลาประมวลผล:</strong> {processing_time:.1f} วินาที</p>
+            <p style="font-size: 1.1rem; margin: 10px 0;"><strong>เวลาประมวลผล:</strong> {processing_time:.1f} วินาที</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1438,7 +1441,7 @@ def display_classification_result_enhanced(result, image_label="", show_confiden
         if top_3:
             st.markdown(f"""
             <div class="info-box">
-                <h4>\U0001F3C6 Top 3 การทำนาย{image_label}</h4>
+                <h4>Top 3 การทำนาย{image_label}</h4>
                 <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
                     <thead>
                         <tr style="background: rgba(128,0,0,0.1);">
@@ -1465,7 +1468,7 @@ def display_classification_result_enhanced(result, image_label="", show_confiden
         # Historical Information
         st.markdown(f"""
         <div class="tips-card">
-            <h4>\U0001F4C5 ข้อมูลประวัติศาสตร์</h4>
+            <h4>ข้อมูลประวัติศาสตร์</h4>
             <ul style="font-size: 1.1rem; line-height: 1.6;">
                 <li><strong>ปีที่สร้าง:</strong> {amulet_info.get('period', 'ไม่ระบุ')}</li>
                 <li><strong>วัด/สถานที่:</strong> {amulet_info.get('temple', 'ไม่ระบุ')}</li>
@@ -1479,7 +1482,7 @@ def display_classification_result_enhanced(result, image_label="", show_confiden
         if price_info.get('max', 0) > 0:
             st.markdown(f"""
             <div class="warning-box">
-                <h4>\U0001F4B0 ช่วงราคาตลาด (ข้อมูลอ้างอิง)</h4>
+                <h4>ช่วงราคาตลาด (ข้อมูลอ้างอิง)</h4>
                 <ul style="font-size: 1.1rem; line-height: 1.6;">
                     <li><strong>ต่ำสุด:</strong> {price_info.get('min', 0):,} บาท</li>
                     <li><strong>สูงสุด:</strong> {price_info.get('max', 0):,} บาท</li>
@@ -1498,7 +1501,7 @@ def display_classification_result_enhanced(result, image_label="", show_confiden
         error_msg = result.get('error', 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ')
         st.markdown(f"""
         <div class="error-box">
-            <h4>\u274C เกิดข้อผิดพลาด{image_label}</h4>
+            <h4>เกิดข้อผิดพลาด{image_label}</h4>
             <p style="font-size: 1.1rem;">{error_msg}</p>
         </div>
         """, unsafe_allow_html=True)
