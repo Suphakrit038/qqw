@@ -15,11 +15,14 @@ import tempfile
 import joblib
 import sys
 from pathlib import Path
+
+# Try to import OpenCV
 try:
     import cv2
+    CV2_AVAILABLE = True
 except ImportError:
     cv2 = None
-    st.warning("OpenCV (cv2) not installed. Some image processing features may not work.")
+    CV2_AVAILABLE = False
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -1200,6 +1203,10 @@ def main():
         st.session_state.analysis_history = []
     if 'camera_permission_granted' not in st.session_state:
         st.session_state.camera_permission_granted = False
+    
+    # Check system dependencies and show warnings if needed
+    if not CV2_AVAILABLE:
+        st.sidebar.warning("⚠️ OpenCV ไม่พร้อมใช้งาน - ฟีเจอร์การประมวลผลภาพบางส่วนอาจไม่ทำงาน")
     
     # JavaScript listener for camera captures
     st.markdown("""
