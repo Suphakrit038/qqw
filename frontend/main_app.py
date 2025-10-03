@@ -1159,8 +1159,7 @@ def main():
     });
     </script>
     """, unsafe_allow_html=True)
-    </script>
-    """, unsafe_allow_html=True)
+    
     if 'camera_permission_granted' not in st.session_state:
         st.session_state.camera_permission_granted = False
     
