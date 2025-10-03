@@ -11,6 +11,8 @@ Thai Amulet Classification System
 
 import streamlit as st
 import requests
+import tempfile
+import joblib
 try:
     import cv2
 except ImportError:
@@ -31,6 +33,58 @@ import io
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
+# Thai amulet information database
+AMULET_INFO = {
+    "phra_sivali": {
+        "thai_name": "พระสีวลี",
+        "full_name": "พระสีวลี มหาลาภ",
+        "temple": "วัดต่างๆ",
+        "period": "พ.ศ. 2400-2500",
+        "description": "พระที่เชื่อว่านำโชคลาภ มีเงินทองใช้ไม่ขาดมือ",
+        "price_range": {"min": 500, "max": 15000, "avg": 3500}
+    },
+    "portrait_back": {
+        "thai_name": "พระรูปหล่อหลังภาพ",
+        "full_name": "พระรูปหล่อ หลังภาพพระ",
+        "temple": "วัดต่างๆ",
+        "period": "พ.ศ. 2450-2550",
+        "description": "พระรูปหล่อที่มีภาพพระด้านหลัง นิยมในยุคปัจจุบัน",
+        "price_range": {"min": 300, "max": 8000, "avg": 2200}
+    },
+    "prok_bodhi_9_leaves": {
+        "thai_name": "ใบโพธิ์ 9 ใบ",
+        "full_name": "พระใบโพธิ์ 9 ใบ",
+        "temple": "วัดมหาธาตุ และวัดต่างๆ",
+        "period": "พ.ศ. 2380-2450",
+        "description": "พระโบราณที่มีรูปแบบใบโพธิ์ 9 ใบ สวยงามและหายาก",
+        "price_range": {"min": 2000, "max": 25000, "avg": 8500}
+    },
+    "somdej_pratanporn_buddhagavak": {
+        "thai_name": "พระสมเด็จ ประตานพรณ์",
+        "full_name": "พระสมเด็จ วัดประตานพรณ์ พิมพ์ใหญ่",
+        "temple": "วัดประตานพรณ์ (วัดระฆัง)",
+        "period": "พ.ศ. 2397-2415 (รัชกาลที่ 4)",
+        "description": "พระสมเด็จสายวัดระฆัง ของสมเด็จพระพุฒาจารย์ (โต พรหมรังสี)",
+        "price_range": {"min": 5000, "max": 150000, "avg": 35000}
+    },
+    "waek_man": {
+        "thai_name": "แหวนมาน",
+        "full_name": "แหวนมานต์ขลัง",
+        "temple": "วัดต่างๆ ในภาคเหนือ",
+        "period": "พ.ศ. 2400-2500",
+        "description": "แหวนมนต์ขลัง ป้องกันภัยและเสริมดวง",
+        "price_range": {"min": 800, "max": 12000, "avg": 4200}
+    },
+    "wat_nong_e_duk": {
+        "thai_name": "พระวัดหนองอีดุก",
+        "full_name": "พระวัดหนองอีดุก จ.สุพรรณบุรี",
+        "temple": "วัดหนองอีดุก สุพรรณบุรี",
+        "period": "พ.ศ. 2480-2530",
+        "description": "พระขุนแผนจากวัดหนองอีดุก มีชื่อเสียงด้านเมตตามหานิยม",
+        "price_range": {"min": 1200, "max": 18000, "avg": 6800}
+    }
+}
+
 # Import enhanced modules (with fallback)
 try:
     from core.error_handling_enhanced import error_handler, validate_image_file
@@ -43,8 +97,8 @@ except:
 
     class performance_monitor:
         @staticmethod
-        def collect_metrics():
-            return {}
+        def log_performance(func_name, execution_time):
+            pass
 
 # Configuration
 API_BASE_URL = "http://localhost:8000"
