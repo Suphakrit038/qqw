@@ -20,9 +20,11 @@ from pathlib import Path
 try:
     import cv2
     CV2_AVAILABLE = True
-except ImportError:
+    print(f"✅ OpenCV imported successfully: {cv2.__version__}")
+except ImportError as e:
     cv2 = None
     CV2_AVAILABLE = False
+    print(f"❌ OpenCV import failed: {e}")
 
 import numpy as np
 from PIL import Image
@@ -1070,6 +1072,7 @@ def local_prediction(image_path):
         # Load trained models
         classifier = joblib.load(str(project_root / "trained_model/classifier.joblib"))
         scaler = joblib.load(str(project_root / "trained_model/scaler.joblib"))
+        pca = joblib.load(str(project_root / "trained_model/pca.joblib"))
         label_encoder = joblib.load(str(project_root / "trained_model/label_encoder.joblib"))
 
         # Extract features using the same method as training
@@ -1080,10 +1083,13 @@ def local_prediction(image_path):
                 "error": "Failed to extract features from image"
             }
 
-        # Scale features and predict
+        # Scale features first, then apply PCA
         features_scaled = scaler.transform(features.reshape(1, -1))
-        prediction = classifier.predict(features_scaled)[0]
-        probabilities = classifier.predict_proba(features_scaled)[0]
+        features_pca = pca.transform(features_scaled)
+        
+        # Predict using PCA-transformed features
+        prediction = classifier.predict(features_pca)[0]
+        probabilities = classifier.predict_proba(features_pca)[0]
         predicted_class = label_encoder.inverse_transform([prediction])[0]
         confidence = float(probabilities[prediction])
 
