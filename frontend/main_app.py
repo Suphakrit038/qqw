@@ -11,18 +11,24 @@ Thai Amulet Classification System
 
 import streamlit as st
 import requests
+import tempfile
+import joblib
+import sys
+from pathlib import Path
+
+# Try to import OpenCV
 try:
     import cv2
+    CV2_AVAILABLE = True
 except ImportError:
     cv2 = None
-    st.warning("OpenCV (cv2) not installed. Some image processing features may not work.")
+    CV2_AVAILABLE = False
+
 import numpy as np
 from PIL import Image
 import json
 import time
 import base64
-from pathlib import Path
-import sys
 import os
 from datetime import datetime
 import io
@@ -1055,7 +1061,7 @@ def local_prediction(image_path):
         import joblib
         import numpy as np
 
-        if cv2 is None:
+        if not CV2_AVAILABLE:
             return {
                 "status": "error",
                 "error": "OpenCV not available for image processing"
