@@ -78,7 +78,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Modern Modal Design CSS
+# Modern Modal Design CSS with Mobile Camera Support
 st.markdown(f"""
 <style>
     /* Import Modern Fonts - Thai + English */
