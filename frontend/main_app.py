@@ -156,77 +156,211 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Modern Modal Design CSS with Mobile Camera Support
+# Load CSS in multiple parts to avoid loading issues
+
+# Part 1: Basic Styling and Fonts
 st.markdown(f"""
 <style>
-    /* Import Modern Fonts - Thai + English */
+    /* Import Modern Thai Fonts */
     @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@200;300;400;500;600;700;800&family=Prompt:wght@300;400;500;600;700;800&display=swap');
     
-    /* Modern App Background - Creamy White */
+    /* Modern App Background */
     .stApp {{
         font-family: 'Sarabun', 'Prompt', -apple-system, BlinkMacSystemFont, sans-serif;
         background: linear-gradient(135deg, #fdfbf7 0%, #f5f3ef 100%);
         background-attachment: fixed;
     }}
     
-    /* Mobile-First Responsive Design */
+    /* Hide Streamlit Elements */
+    #MainMenu {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    .stDeployButton {{display: none;}}
+    [data-testid="stSidebar"] {{display: none;}}
+    [data-testid="collapsedControl"] {{display: none;}}
+</style>
+""", unsafe_allow_html=True)
+
+# Part 2: Container and Layout Styling
+st.markdown(f"""
+<style>
+    /* Glassmorphism Container */
+    .main .block-container {{
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(20px);
+        border-radius: 24px;
+        box-shadow: 0 8px 32px 0 rgba(128, 0, 0, 0.08);
+        border: 1px solid rgba(212, 175, 55, 0.2);
+        padding: 40px;
+        margin: 20px auto;
+        max-width: 1000px;
+    }}
+    
+    /* Mobile Responsive */
     @media (max-width: 768px) {{
         .main .block-container {{
             padding: 20px 15px !important;
             margin: 10px 5px !important;
             border-radius: 16px !important;
         }}
-        
-        .logo-header {{
-            flex-direction: column !important;
-            padding: 30px 20px !important;
-            text-align: center !important;
-            gap: 20px !important;
-        }}
-        
-        .logo-title {{
-            font-size: 2.5rem !important;
-        }}
-        
-        .logo-subtitle {{
-            font-size: 1.2rem !important;
-        }}
-        
-        .logo-img, .logo-img-small {{
-            height: 120px !important;
-        }}
-        
-        [data-testid="column"] {{
-            padding: 10px 5px !important;
-        }}
-        
-        .stTabs [data-baseweb="tab"] {{
-            font-size: 0.9rem !important;
-            padding: 10px 16px !important;
-        }}
-        
-        .card, .feature-card, .result-card {{
-            padding: 25px 20px !important;
-            margin: 20px 0 !important;
-        }}
-        
-        h1 {{
-            font-size: 2.2rem !important;
-        }}
-        
-        h2 {{
-            font-size: 1.8rem !important;
-        }}
-        
-        h3 {{
-            font-size: 1.4rem !important;
-        }}
-        
-        .tips-card, .success-box, .error-box, .warning-box, .info-box {{
-            padding: 20px 15px !important;
-            font-size: 1.1rem !important;
-        }}
     }}
+    
+    /* Typography */
+    h1 {{
+        font-family: 'Prompt', sans-serif;
+        font-size: 2.6rem !important;
+        font-weight: 700 !important;
+        background: linear-gradient(135deg, {COLORS['primary']}, {COLORS['gold']});
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 20px !important;
+    }}
+    
+    h2 {{
+        font-family: 'Prompt', sans-serif;
+        font-size: 2.2rem !important;
+        font-weight: 600 !important;
+        color: #2d3748 !important;
+        margin-bottom: 18px !important;
+    }}
+    
+    p {{
+        font-family: 'Sarabun', sans-serif;
+        font-size: 1.05rem !important;
+        line-height: 1.7 !important;
+        color: #4a5568 !important;
+    }}
+</style>
+""", unsafe_allow_html=True)
+
+# Part 3: Button and Interactive Elements
+st.markdown(f"""
+<style>
+    /* Modern Buttons */
+    .stButton > button {{
+        font-family: 'Sarabun', sans-serif;
+        background: {COLORS['accent']};
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 14px 40px;
+        font-weight: 600;
+        font-size: 1.05rem;
+        box-shadow: 0 4px 15px rgba(184, 134, 11, 0.3);
+        transition: all 0.3s ease;
+    }}
+    
+    .stButton > button:hover {{
+        background: {COLORS['gold']};
+        box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
+        transform: translateY(-2px);
+    }}
+    
+    /* File Uploader */
+    [data-testid="stFileUploader"] {{
+        background: rgba(255, 255, 255, 0.8);
+        padding: 30px;
+        border-radius: 16px;
+        border: 2px dashed {COLORS['primary']};
+        transition: all 0.3s ease;
+    }}
+    
+    [data-testid="stFileUploader"]:hover {{
+        background: rgba(255, 255, 255, 0.95);
+        border-color: {COLORS['accent']};
+    }}
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab"] {{
+        font-family: 'Sarabun', sans-serif;
+        font-size: 1.05rem !important;
+        font-weight: 600 !important;
+        padding: 14px 32px !important;
+        border-radius: 10px !important;
+        background: #f5ebe0 !important;
+        border: none !important;
+        color: #6c757d !important;
+    }}
+    
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {{
+        background: {COLORS['accent']} !important;
+        color: white !important;
+        box-shadow: 0 3px 12px rgba(184, 134, 11, 0.35);
+    }}
+</style>
+# Part 4: Alert Boxes and Cards
+st.markdown(f"""
+<style>
+    /* Modern Alert Boxes */
+    .success-box {{
+        background: linear-gradient(135deg, rgba(232, 245, 233, 0.95), rgba(200, 230, 201, 0.95));
+        color: #1b5e20;
+        padding: 30px;
+        border-radius: 16px;
+        border-left: 5px solid #4caf50;
+        box-shadow: 0 8px 25px rgba(76, 175, 80, 0.2);
+        margin: 30px 0;
+        font-size: 1.3rem;
+    }}
+    
+    .info-box {{
+        background: linear-gradient(135deg, rgba(227, 242, 253, 0.95), rgba(187, 222, 251, 0.95));
+        color: #0d47a1;
+        padding: 30px;
+        border-radius: 16px;
+        border-left: 5px solid #2196f3;
+        box-shadow: 0 8px 25px rgba(33, 150, 243, 0.2);
+        margin: 30px 0;
+        font-size: 1.3rem;
+    }}
+    
+    .warning-box {{
+        background: linear-gradient(135deg, rgba(255, 243, 224, 0.95), rgba(255, 224, 178, 0.95));
+        color: #e65100;
+        padding: 30px;
+        border-radius: 16px;
+        border-left: 5px solid #ff9800;
+        box-shadow: 0 8px 25px rgba(255, 152, 0, 0.2);
+        margin: 30px 0;
+        font-size: 1.3rem;
+    }}
+    
+    .error-box {{
+        background: linear-gradient(135deg, rgba(255, 235, 238, 0.95), rgba(255, 205, 210, 0.95));
+        color: #b71c1c;
+        padding: 30px;
+        border-radius: 16px;
+        border-left: 5px solid #f44336;
+        box-shadow: 0 8px 25px rgba(244, 67, 54, 0.2);
+        margin: 30px 0;
+        font-size: 1.3rem;
+    }}
+    
+    /* Modern Cards */
+    .card {{
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(15px);
+        padding: 50px;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        margin: 35px 0;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        transition: transform 0.3s ease;
+    }}
+    
+    .card:hover {{
+        transform: translateY(-5px);
+    }}
+    
+    /* Section Divider */
+    .section-divider {{
+        height: 1.5px;
+        background: linear-gradient(90deg, transparent, {COLORS['gold']}, transparent);
+        margin: 35px 0;
+        border-radius: 2px;
+        opacity: 0.6;
+    }}
+</style>
+""", unsafe_allow_html=True)
     
     /* Glassmorphism Container */
     .main .block-container {{
@@ -1204,9 +1338,10 @@ def main():
     if 'camera_permission_granted' not in st.session_state:
         st.session_state.camera_permission_granted = False
     
-    # Check system dependencies and show warnings if needed
+    # Check system dependencies (only log, don't show warning to users)
     if not CV2_AVAILABLE:
-        st.sidebar.warning("⚠️ OpenCV ไม่พร้อมใช้งาน - ฟีเจอร์การประมวลผลภาพบางส่วนอาจไม่ทำงาน")
+        # Log the issue but don't show warning in UI for better UX
+        print("OpenCV not available - some image processing features may be limited")
     
     # JavaScript listener for camera captures
     st.markdown("""
