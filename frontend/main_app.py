@@ -91,6 +91,65 @@ st.markdown(f"""
         background-attachment: fixed;
     }}
     
+    /* Mobile-First Responsive Design */
+    @media (max-width: 768px) {{
+        .main .block-container {{
+            padding: 20px 15px !important;
+            margin: 10px 5px !important;
+            border-radius: 16px !important;
+        }}
+        
+        .logo-header {{
+            flex-direction: column !important;
+            padding: 30px 20px !important;
+            text-align: center !important;
+            gap: 20px !important;
+        }}
+        
+        .logo-title {{
+            font-size: 2.5rem !important;
+        }}
+        
+        .logo-subtitle {{
+            font-size: 1.2rem !important;
+        }}
+        
+        .logo-img, .logo-img-small {{
+            height: 120px !important;
+        }}
+        
+        [data-testid="column"] {{
+            padding: 10px 5px !important;
+        }}
+        
+        .stTabs [data-baseweb="tab"] {{
+            font-size: 0.9rem !important;
+            padding: 10px 16px !important;
+        }}
+        
+        .card, .feature-card, .result-card {{
+            padding: 25px 20px !important;
+            margin: 20px 0 !important;
+        }}
+        
+        h1 {{
+            font-size: 2.2rem !important;
+        }}
+        
+        h2 {{
+            font-size: 1.8rem !important;
+        }}
+        
+        h3 {{
+            font-size: 1.4rem !important;
+        }}
+        
+        .tips-card, .success-box, .error-box, .warning-box, .info-box {{
+            padding: 20px 15px !important;
+            font-size: 1.1rem !important;
+        }}
+    }}
+    
     /* Glassmorphism Container */
     .main .block-container {{
         background: rgba(255, 255, 255, 0.98);
@@ -351,6 +410,80 @@ st.markdown(f"""
         font-size: 1.4rem !important;
         font-weight: 600 !important;
         color: {COLORS['primary']} !important;
+    }}
+    
+    /* Camera Controls - Mobile Optimized */
+    .camera-container {{
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(15px);
+        border-radius: 20px;
+        padding: 25px;
+        margin: 20px 0;
+        box-shadow: 0 8px 25px rgba(128, 0, 0, 0.1);
+        border: 2px solid {COLORS['primary']};
+        text-align: center;
+    }}
+    
+    .camera-button {{
+        background: linear-gradient(135deg, {COLORS['primary']}, {COLORS['accent']});
+        color: white;
+        border: none;
+        border-radius: 15px;
+        padding: 15px 30px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        margin: 10px;
+        box-shadow: 0 4px 15px rgba(128, 0, 0, 0.3);
+        transition: all 0.3s ease;
+        min-width: 140px;
+    }}
+    
+    .camera-button:hover {{
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(128, 0, 0, 0.4);
+    }}
+    
+    .camera-preview {{
+        max-width: 100%;
+        height: auto;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        margin: 15px 0;
+    }}
+    
+    .camera-video {{
+        width: 100%;
+        max-width: 400px;
+        height: auto;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        margin: 15px 0;
+    }}
+    
+    @media (max-width: 768px) {{
+        .camera-container {{
+            padding: 20px 15px;
+            margin: 15px 0;
+        }}
+        
+        .camera-button {{
+            padding: 12px 20px;
+            font-size: 1rem;
+            min-width: 120px;
+            margin: 8px;
+        }}
+        
+        .camera-video {{
+            max-width: 100%;
+            height: 250px;
+            object-fit: cover;
+        }}
+        
+        .camera-preview {{
+            max-height: 200px;
+            object-fit: cover;
+        }}
     }}
     
     /* Modern Tabs */
@@ -675,6 +808,88 @@ st.markdown(f"""
         background: linear-gradient(135deg, {COLORS['gold']}, {COLORS['primary']});
     }}
 </style>
+
+<script>
+// Camera functionality with single permission request
+let cameraStream = null;
+let currentMode = 'front'; // 'front' or 'back'
+
+function requestCameraPermission() {{
+    return navigator.mediaDevices.getUserMedia({{
+        video: {{
+            facingMode: 'user',
+            width: {{ ideal: 1280, max: 1920 }},
+            height: {{ ideal: 720, max: 1080 }}
+        }}
+    }});
+}}
+
+function switchCamera(mode) {{
+    currentMode = mode;
+    if (cameraStream) {{
+        // หยุดกล้องเก่า
+        cameraStream.getTracks().forEach(track => track.stop());
+    }}
+    
+    // เริ่มกล้องใหม่ตามโหมด
+    const constraints = {{
+        video: {{
+            facingMode: mode === 'front' ? 'user' : 'environment',
+            width: {{ ideal: 1280, max: 1920 }},
+            height: {{ ideal: 720, max: 1080 }}
+        }}
+    }};
+    
+    navigator.mediaDevices.getUserMedia(constraints)
+        .then(stream => {{
+            cameraStream = stream;
+            const video = document.getElementById('camera-video');
+            if (video) {{
+                video.srcObject = stream;
+            }}
+        }})
+        .catch(err => {{
+            console.error('Error switching camera:', err);
+            alert('ไม่สามารถเปลี่ยนกล้องได้: ' + err.message);
+        }});
+}}
+
+function capturePhoto(targetMode) {{
+    const video = document.getElementById('camera-video');
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    
+    if (video && video.videoWidth > 0) {{
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0);
+        
+        // แปลงเป็น blob และส่งไปยัง Streamlit
+        canvas.toBlob(blob => {{
+            const formData = new FormData();
+            formData.append('file', blob, `captured_${{targetMode}}.jpg`);
+            
+            // ส่งข้อมูลไปยัง Streamlit ผ่าน session state
+            window.parent.postMessage({{
+                type: 'camera_capture',
+                mode: targetMode,
+                dataUrl: canvas.toDataURL('image/jpeg', 0.8)
+            }}, '*');
+        }}, 'image/jpeg', 0.8);
+    }}
+}}
+
+function stopCamera() {{
+    if (cameraStream) {{
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+    }}
+    const video = document.getElementById('camera-video');
+    if (video) {{
+        video.srcObject = null;
+    }}
+}}
+</script>
 """, unsafe_allow_html=True)
 
 # Utility Functions
@@ -707,6 +922,36 @@ def get_other_logos():
     except:
         pass
     return logos
+
+def create_camera_interface():
+    """สร้าง interface สำหรับกล้อง"""
+    st.markdown("""
+    <div class="camera-container">
+        <h4>📷 ถ่ายรูปด้วยกล้อง</h4>
+        <p>กดปุ่มเพื่อเริ่มใช้กล้อง (ขออนุญาตครั้งเดียว ใช้ได้ทั้งหน้าและหลัง)</p>
+        
+        <button class="camera-button" onclick="requestCameraPermission().then(stream => {
+            cameraStream = stream;
+            document.getElementById('camera-video').srcObject = stream;
+            document.getElementById('camera-controls').style.display = 'block';
+            document.getElementById('start-camera').style.display = 'none';
+        }).catch(err => {
+            alert('ไม่สามารถเข้าถึงกล้องได้: ' + err.message);
+        });" id="start-camera">🎥 เริ่มใช้กล้อง</button>
+        
+        <div id="camera-controls" style="display: none;">
+            <video id="camera-video" class="camera-video" autoplay playsinline muted></video>
+            <br>
+            <button class="camera-button" onclick="switchCamera('user')">📱 กล้องหน้า</button>
+            <button class="camera-button" onclick="switchCamera('environment')">📷 กล้องหลัง</button>
+            <br>
+            <button class="camera-button" onclick="capturePhoto('front')" style="background: #10b981;">📸 ถ่ายรูปหน้า</button>
+            <button class="camera-button" onclick="capturePhoto('back')" style="background: #3b82f6;">📸 ถ่ายรูปหลัง</button>
+            <br>
+            <button class="camera-button" onclick="stopCamera(); document.getElementById('camera-controls').style.display = 'none'; document.getElementById('start-camera').style.display = 'block';" style="background: #ef4444;">⏹️ หยุดกล้อง</button>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 def check_api_health():
     """ตรวจสอบสถานะ API"""
@@ -878,6 +1123,80 @@ def main():
         st.session_state.back_camera_image = None
     if 'analysis_history' not in st.session_state:
         st.session_state.analysis_history = []
+    if 'camera_permission_granted' not in st.session_state:
+        st.session_state.camera_permission_granted = False
+    
+    # JavaScript listener for camera captures
+    st.markdown("""
+    <script>
+    window.addEventListener('message', function(event) {
+        if (event.data.type === 'camera_capture') {
+            // ส่งข้อมูลรูปที่ถ่ายไปยัง Streamlit session state
+            const mode = event.data.mode;
+            const dataUrl = event.data.dataUrl;
+            
+            // แปลง data URL เป็น file object
+            fetch(dataUrl)
+                .then(res => res.blob())
+                .then(blob => {
+                    const file = new File([blob], `captured_${mode}.jpg`, { type: 'image/jpeg' });
+                    
+                    // อัปเดต session state (ต้องใช้ Streamlit API)
+                    if (mode === 'front') {
+                        window.streamlit_front_image = dataUrl;
+                    } else {
+                        window.streamlit_back_image = dataUrl;
+                    }
+                    
+                    // แจ้งให้ Streamlit รู้ว่ามีการเปลี่ยนแปลง
+                    window.parent.postMessage({
+                        type: 'streamlit_update',
+                        mode: mode,
+                        dataUrl: dataUrl
+                    }, '*');
+                });
+        }
+    });
+    </script>
+    """, unsafe_allow_html=True)
+    </script>
+    """, unsafe_allow_html=True)
+    if 'camera_permission_granted' not in st.session_state:
+        st.session_state.camera_permission_granted = False
+    
+    # JavaScript listener for camera captures
+    st.markdown("""
+    <script>
+    window.addEventListener('message', function(event) {
+        if (event.data.type === 'camera_capture') {
+            // ส่งข้อมูลรูปที่ถ่ายไปยัง Streamlit session state
+            const mode = event.data.mode;
+            const dataUrl = event.data.dataUrl;
+            
+            // แปลง data URL เป็น file object
+            fetch(dataUrl)
+                .then(res => res.blob())
+                .then(blob => {
+                    const file = new File([blob], `captured_${mode}.jpg`, { type: 'image/jpeg' });
+                    
+                    // อัปเดต session state (ต้องใช้ Streamlit API)
+                    if (mode === 'front') {
+                        window.streamlit_front_image = dataUrl;
+                    } else {
+                        window.streamlit_back_image = dataUrl;
+                    }
+                    
+                    // แจ้งให้ Streamlit รู้ว่ามีการเปลี่ยนแปลง
+                    window.parent.postMessage({
+                        type: 'streamlit_update',
+                        mode: mode,
+                        dataUrl: dataUrl
+                    }, '*');
+                });
+        }
+    });
+    </script>
+    """, unsafe_allow_html=True)
 
     # Get logos
     amulet_logo = get_logo_base64()
@@ -987,54 +1306,100 @@ def main():
         """, unsafe_allow_html=True)
 
 def dual_image_mode(show_confidence, show_probabilities):
-    """โหมดสองด้าน"""
-    st.markdown("### อัปโหลดรูปทั้งสองด้าน")
+    """โหมดสองด้าน - ปรับปรุงสำหรับมือถือ"""
+    st.markdown("### 📸 อัปโหลดรูปทั้งสองด้าน")
+    
+    # ตรวจสอบว่าเป็นมือถือหรือไม่
+    is_mobile = st.checkbox("📱 ใช้งานบนมือถือ (แสดงแบบแนวตั้ง)", value=False)
+    
+    if is_mobile:
+        # โหมดมือถือ - แสดงแนวตั้ง
+        st.markdown("#### 📱 โหมดมือถือ")
+        
+        # Camera interface
+        create_camera_interface()
+        
+        st.markdown("---")
+        
+        # Front image section
+        st.markdown("#### 📷 รูปด้านหน้า")
+        front_image = st.file_uploader(
+            "อัปโหลดรูปด้านหน้า", 
+            type=['png', 'jpg', 'jpeg'], 
+            key="front_upload_mobile"
+        )
+        
+        if front_image:
+            st.image(front_image, caption="รูปด้านหน้า", use_container_width=True)
+        elif st.session_state.front_camera_image:
+            st.image(st.session_state.front_camera_image, caption="รูปด้านหน้า (จากกล้อง)", use_container_width=True)
+        
+        st.markdown("---")
+        
+        # Back image section  
+        st.markdown("#### 📷 รูปด้านหลัง")
+        back_image = st.file_uploader(
+            "อัปโหลดรูปด้านหลัง", 
+            type=['png', 'jpg', 'jpeg'], 
+            key="back_upload_mobile"
+        )
+        
+        if back_image:
+            st.image(back_image, caption="รูปด้านหลัง", use_container_width=True)
+        elif st.session_state.back_camera_image:
+            st.image(st.session_state.back_camera_image, caption="รูปด้านหลัง (จากกล้อง)", use_container_width=True)
+            
+    else:
+        # โหมดเดสก์ทอป - แสดงแนวนอน
+        col1, col2 = st.columns(2)
 
-    col1, col2 = st.columns(2)
+        # Front image
+        with col1:
+            st.markdown("#### ด้านหน้า")
 
-    # Front image
-    with col1:
-        st.markdown("#### ด้านหน้า")
+            front_upload, front_camera = st.tabs(["อัปโหลดไฟล์", "ถ่ายรูป"])
 
-        front_upload, front_camera = st.tabs(["อัปโหลดไฟล์", "ถ่ายรูป"])
+            front_image = None
 
-        front_image = None
+            with front_upload:
+                front_image = st.file_uploader("เลือกรูปด้านหน้า", type=['jpg', 'jpeg', 'png', 'bmp', 'gif', 'tiff', 'tif', 'webp', 'heic', 'heif'], key="front_upload")
 
-        with front_upload:
-            front_image = st.file_uploader("เลือกรูปด้านหน้า", type=['jpg', 'jpeg', 'png', 'bmp', 'gif', 'tiff', 'tif', 'webp', 'heic', 'heif'], key="front_upload")
+            with front_camera:
+                # Camera will only activate when user enters this tab
+                camera_front = st.camera_input("ถ่ายรูปด้านหน้า", key="front_camera")
+                if camera_front:
+                    st.session_state.front_camera_image = camera_front
+                    st.success("ถ่ายรูปสำเร็จ!")
 
-        with front_camera:
-            # Camera will only activate when user enters this tab
-            camera_front = st.camera_input("ถ่ายรูปด้านหน้า", key="front_camera")
-            if camera_front:
-                st.session_state.front_camera_image = camera_front
-                st.success("ถ่ายรูปสำเร็จ!")
+            display_front = front_image or st.session_state.front_camera_image
+            if display_front:
+                st.image(display_front, caption="รูปด้านหน้า", use_container_width=True)
 
-        display_front = front_image or st.session_state.front_camera_image
-        if display_front:
-            st.image(display_front, caption="รูปด้านหน้า", use_container_width=True)
+        # Back image
+        with col2:
+            st.markdown("#### ด้านหลัง")
 
-    # Back image
-    with col2:
-        st.markdown("#### ด้านหลัง")
+            back_upload, back_camera = st.tabs(["อัปโหลดไฟล์", "ถ่ายรูป"])
 
-        back_upload, back_camera = st.tabs(["อัปโหลดไฟล์", "ถ่ายรูป"])
+            back_image = None
 
-        back_image = None
+            with back_upload:
+                back_image = st.file_uploader("เลือกรูปด้านหลัง", type=['jpg', 'jpeg', 'png', 'bmp', 'gif', 'tiff', 'tif', 'webp', 'heic', 'heif'], key="back_upload")
 
-        with back_upload:
-            back_image = st.file_uploader("เลือกรูปด้านหลัง", type=['jpg', 'jpeg', 'png', 'bmp', 'gif', 'tiff', 'tif', 'webp', 'heic', 'heif'], key="back_upload")
+            with back_camera:
+                # Camera will only activate when user enters this tab
+                camera_back = st.camera_input("ถ่ายรูปด้านหลัง", key="back_camera")
+                if camera_back:
+                    st.session_state.back_camera_image = camera_back
+                    st.success("ถ่ายรูปสำเร็จ!")
 
-        with back_camera:
-            # Camera will only activate when user enters this tab
-            camera_back = st.camera_input("ถ่ายรูปด้านหลัง", key="back_camera")
-            if camera_back:
-                st.session_state.back_camera_image = camera_back
-                st.success("ถ่ายรูปสำเร็จ!")
-
-        display_back = back_image or st.session_state.back_camera_image
-        if display_back:
-            st.image(display_back, caption="รูปด้านหลัง", use_container_width=True)
+            display_back = back_image or st.session_state.back_camera_image
+            if display_back:
+                st.image(display_back, caption="รูปด้านหลัง", use_container_width=True)
+        
+        # Camera interface for desktop
+        st.markdown("---")
+        create_camera_interface()
 
     st.markdown("---")
 
@@ -1192,11 +1557,24 @@ def show_faq_section():
 
     with st.expander("❓ สามารถใช้งานบนมือถือได้หรือไม่?"):
         st.markdown("""
-        **ใช้ได้!** ระบบรองรับการใช้งานบนมือถือ:
-        - เปิดผ่านเว็บเบราว์เซอร์บนมือถือ
-        - สามารถถ่ายรูปโดยตรงจากกล้องมือถือ
-        - อัปโหลดรูปจากแกลเลอรี่
-        - หน้าจอปรับขนาดให้เหมาะกับอุปกรณ์โดยอัตโนมัติ
+        **ใช้ได้อย่างเต็มประสิทธิภาพ!** ระบบได้รับการปรับปรุงพิเศษสำหรับมือถือ:
+        
+        **🔧 ฟีเจอร์ใหม่สำหรับมือถือ:**
+        - **โหมดมือถือ** - แสดงผลแบบแนวตั้งที่เหมาะกับหน้าจอมือถือ  
+        - **กล้องอัจฉริยะ** - ขออนุญาตกล้องครั้งเดียว ใช้ได้ทั้งกล้องหน้าและหลัง  
+        - **ปุ่มใหญ่พิเศษ** - ออกแบบให้กดง่ายบนหน้าจอสัมผัส  
+        - **ปรับขนาดอัตโนมัติ** - รูปภาพและส่วนประกอบปรับขนาดให้เหมาะสม  
+        
+        **📱 วิธีใช้งาน:**  
+        1. เปิดเว็บไซต์ผ่านเบราว์เซอร์มือถือ (Chrome, Safari, Edge)  
+        2. เลือก ✅ "ใช้งานบนมือถือ" ในหน้าหลัก  
+        3. กด "เริ่มใช้กล้อง" เพื่อขออนุญาตกล้อง  
+        4. สลับระหว่างกล้องหน้า/หลัง และถ่ายรูปได้เลย!  
+        
+        **💡 เทคนิคการถ่ายรูปด้วยมือถือ:**  
+        - ใช้แสงธรรมชาติหรือแสงขาวสำหรับความชัดเจน  
+        - จับมือถือให้มั่นคงเพื่อป้องกันภาพเบลอ  
+        - ถ่ายรูปในระยะใกล้เพื่อรายละเอียดที่ชัดเจน  
         """)
 
     with st.expander("❓ มีค่าใช้จ่ายในการใช้งานหรือไม่?"):
