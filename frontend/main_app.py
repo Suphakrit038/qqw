@@ -14,6 +14,7 @@ import requests
 import tempfile
 import joblib
 import sys
+import os
 from pathlib import Path
 
 # Import OpenCV - ใช้วิธีง่ายๆ
@@ -732,13 +733,19 @@ st.markdown(f"""
     .result-card {{
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(250, 250, 250, 0.98));
         backdrop-filter: blur(15px);
-        padding: 50px;
+        padding: 30px;
         border-radius: 20px;
-        box-shadow: 0 12px 40px rgba(0,0,0,0.2);
-        margin: 35px 0;
-        border-top: 5px solid {COLORS['primary']};
+        box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+        margin: 25px 0;
+        border: 2px solid {COLORS['primary']};
         position: relative;
         overflow: hidden;
+        transition: all 0.3s ease;
+    }}
+    
+    .result-card:hover {{
+        transform: translateY(-2px);
+        box-shadow: 0 15px 45px rgba(0,0,0,0.2);
     }}
     
     .result-card::before {{
@@ -746,11 +753,23 @@ st.markdown(f"""
         position: absolute;
         top: 0;
         right: 0;
-        width: 200px;
-        height: 200px;
+        width: 150px;
+        height: 150px;
         background: linear-gradient(135deg, {COLORS['gold']}, transparent);
-        opacity: 0.1;
+        opacity: 0.08;
         border-radius: 50%;
+    }}
+    
+    .result-card h3, .result-card h4 {{
+        color: {COLORS['primary']};
+        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }}
+    
+    .result-card hr {{
+        border: 0;
+        height: 2px;
+        background: linear-gradient(to right, transparent, {COLORS['primary']}, transparent);
+        margin: 20px 0;
     }}
     
     /* Column Styling */
@@ -1128,13 +1147,27 @@ def local_prediction(image_path):
     try:
         import joblib
         import numpy as np
-        import cv2  # Import ใหม่เพื่อให้แน่ใจ
+        
+        # ใช้ absolute path แน่นอน
+        base_path = Path("e:/qqw/trained_model")
+        
+        model_paths = {
+            'classifier': base_path / "classifier.joblib",
+            'scaler': base_path / "scaler.joblib", 
+            'pca': base_path / "pca.joblib",
+            'label_encoder': base_path / "label_encoder.joblib"
+        }
+        
+        print(f"Base path: {base_path}")
+        for name, path in model_paths.items():
+            print(f"{name} path: {path}")
+            print(f"{name} exists: {path.exists()}")
 
         # Load trained models
-        classifier = joblib.load(str(project_root / "trained_model/classifier.joblib"))
-        scaler = joblib.load(str(project_root / "trained_model/scaler.joblib"))
-        pca = joblib.load(str(project_root / "trained_model/pca.joblib"))
-        label_encoder = joblib.load(str(project_root / "trained_model/label_encoder.joblib"))
+        classifier = joblib.load(str(model_paths['classifier']))
+        scaler = joblib.load(str(model_paths['scaler']))
+        pca = joblib.load(str(model_paths['pca']))
+        label_encoder = joblib.load(str(model_paths['label_encoder']))
 
         # Extract features using the same method as training
         features = extract_image_features(image_path)
@@ -1174,19 +1207,27 @@ def local_prediction(image_path):
         }
 
     except ImportError as e:
+        error_msg = f"Import error: {str(e)}"
+        print(f"DEBUG - Import Error: {error_msg}")
         return {
             "status": "error",
-            "error": f"Import error: {str(e)}"
+            "error": error_msg
         }
     except FileNotFoundError as e:
+        error_msg = f"Model file not found: {str(e)}"
+        print(f"DEBUG - File Not Found: {error_msg}")
+        print(f"DEBUG - Current working directory: {os.getcwd()}")
+        print(f"DEBUG - Project root: {project_root}")
         return {
             "status": "error", 
-            "error": f"Model file not found: {str(e)}"
+            "error": error_msg
         }
     except Exception as e:
+        error_msg = f"Unexpected error: {str(e)}"
+        print(f"DEBUG - Unexpected Error: {error_msg}")
         return {
             "status": "error",
-            "error": f"Unexpected error: {str(e)}"
+            "error": error_msg
         }
 
 def display_classification_result(result, show_confidence=True, show_probabilities=True):
@@ -1542,48 +1583,55 @@ def dual_image_mode(show_confidence, show_probabilities):
 
                     st.success(f"เสร็จสิ้น! ({processing_time:.2f}s)")
 
-                    st.markdown("### ผลการวิเคราะห์")
+                    # แสดงผลลัพธ์ในการ์ดเดียว
+                    st.markdown("""
+                    <div class="result-card" style="padding: 25px; margin: 20px 0;">
+                        <h3 style="text-align: center; color: #2E8B57; margin-bottom: 25px;">📊 ผลการวิเคราะห์พระเครื่อง</h3>
+                    </div>
+                    """, unsafe_allow_html=True)
 
+                    # แสดงผลลัพธ์ทั้งสองด้านในการ์ดเดียว
+                    st.markdown('<div class="result-card" style="padding: 20px;">', unsafe_allow_html=True)
+                    
                     col1, col2 = st.columns(2)
 
                     with col1:
-                        st.markdown('<div class="result-card">', unsafe_allow_html=True)
-                        st.markdown("#### ด้านหน้า")
+                        st.markdown("#### 🔍 ด้านหน้า")
                         display_classification_result(front_result, show_confidence, show_probabilities)
-                        st.markdown('</div>', unsafe_allow_html=True)
 
                     with col2:
-                        st.markdown('<div class="result-card">', unsafe_allow_html=True)
-                        st.markdown("#### ด้านหลัง")
+                        st.markdown("#### 🔍 ด้านหลัง")
                         display_classification_result(back_result, show_confidence, show_probabilities)
-                        st.markdown('</div>', unsafe_allow_html=True)
 
-                    # Comparison
+                    # การเปรียบเทียบในการ์ดเดียวกัน
                     if (front_result.get("status") == "success" and back_result.get("status") == "success"):
                         front_class = front_result.get("predicted_class", "")
                         back_class = back_result.get("predicted_class", "")
                         front_conf = front_result.get("confidence", 0)
                         back_conf = back_result.get("confidence", 0)
 
-                        st.markdown("### การเปรียบเทียบ")
+                        st.markdown("<hr style='margin: 20px 0; border: 1px solid #e0e0e0;'>", unsafe_allow_html=True)
+                        st.markdown("#### 📋 การเปรียบเทียบผลลัพธ์")
 
                         if front_class == back_class:
                             st.markdown(f"""
-                            <div class="success-box">
-                                <h4>ผลลัพธ์สอดคล้องกัน!</h4>
+                            <div class="success-box" style="margin: 15px 0;">
+                                <h4>✅ ผลลัพธ์สอดคล้องกัน!</h4>
                                 <p style="font-size: 1.1rem;"><strong>ทั้งสองด้านระบุเป็น:</strong> {front_class}</p>
                                 <p><strong>ความเชื่อมั่นเฉลี่ย:</strong> {(front_conf + back_conf) / 2:.1%}</p>
                             </div>
                             """, unsafe_allow_html=True)
                         else:
                             st.markdown(f"""
-                            <div class="warning-box">
-                                <h4>ผลลัพธ์ไม่สอดคล้องกัน</h4>
+                            <div class="warning-box" style="margin: 15px 0;">
+                                <h4>⚠️ ผลลัพธ์ไม่สอดคล้องกัน</h4>
                                 <p><strong>ด้านหน้า:</strong> {front_class} ({front_conf:.1%})</p>
                                 <p><strong>ด้านหลัง:</strong> {back_class} ({back_conf:.1%})</p>
-                                <p>แนะนำให้ปรึกษาผู้เชี่ยวชาญเพิ่มเติม</p>
+                                <p>💡 แนะนำให้ปรึกษาผู้เชี่ยวชาญเพิ่มเติม</p>
                             </div>
                             """, unsafe_allow_html=True)
+                    
+                    st.markdown('</div>', unsafe_allow_html=True)  # ปิดการ์ดหลัก
 
                     st.session_state.analysis_history.append({
                         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
